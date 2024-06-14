@@ -31,8 +31,8 @@ In digital IC design, compared with post-synthesis netlists or layouts, the earl
                 $ python3 get_ep_feat.py
                 $ python3 get_ep_label.py
                 ```
-            - Input: BOG timing report (/home/coguest5/RTL-Timer/dataset/BOG/SOG/timing_rpt) + netlist timing report (/home/coguest5/RTL-Timer/dataset/netlist/netlist_rpt)
-            - Output: bit-wise feature-label pair (/home/coguest5/RTL-Timer/modeling/feat_label/bit-wise/{design_name}.pkl)
+                - Input: BOG timing report (/home/coguest5/RTL-Timer/dataset/BOG/SOG/timing_rpt) + netlist timing report (/home/coguest5/RTL-Timer/dataset/netlist/netlist_rpt)
+                - Output: bit-wise feature-label pair (/home/coguest5/RTL-Timer/modeling/feat_label/bit-wise/{design_name}.pkl)
 
 2. Timing Modeling
     * Folder: modeling
@@ -45,8 +45,8 @@ In digital IC design, compared with post-synthesis netlists or layouts, the earl
             $ python3 train.py
             $ python3 infer.py
             ```
-            - Input: bit-wise feature-label pair
-            - Output: saved model for testing designs /home/coguest5/RTL-Timer/modeling/regression_bit_ep/saved_model/bit_ep_model_{test_design}.pkl
+                - Input: bit-wise feature-label pair
+                - Output: saved model for testing designs /home/coguest5/RTL-Timer/modeling/regression_bit_ep/saved_model/bit_ep_model_{test_design}.pkl
 
 
         * Register-word regression (folder: regression_word_ep)
