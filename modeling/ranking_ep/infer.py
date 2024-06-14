@@ -15,7 +15,7 @@ import pandas as pd
 from multiprocessing import Pool
 from random import shuffle
 from eval import *
-design_json = "/data/usr/AIG_analyzer/LS-benchmark/design_timing_rgb_good.json"
+design_json = "/home/coguest5/AIG_analyzer/LS-benchmark/design_timing_rgb_good.json"
 
 def avg_stat(dct, flag, save_dir=None):
     lst = list(dct.values())

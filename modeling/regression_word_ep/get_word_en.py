@@ -6,7 +6,7 @@ from word_stat import bit2word, avg_stat
 from collections import defaultdict
 from draw_fig import draw_fig
 from eval import *
-design_json = "/data/usr/AIG_analyzer/LS-benchmark/design_timing_rgb_good.json"
+design_json = "/home/coguest5/AIG_analyzer/LS-benchmark/design_timing_rgb_good.json"
 
 cur_dir = os.getcwd()
 

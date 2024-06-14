@@ -1,0 +1,8 @@
+["b17", "b17_1", "b18", "b18_1", "b22", "b20", 
+"mem_ctrl", "systemcdes", "systemcaes", "aes_core", "wb_conmax", 
+"VexRiscvTwoStagesMD", "VexRiscvThreeStages", "VexRiscvSmallestNoCsr", 
+"VexRiscvThreeStagesBar", "VexRiscvThreeStagesMD", "VexRiscvSmallAndProductive", 
+"VexRiscvFullNoMmuNoCache", "VexRiscvSmallest", "VexRiscvTwoStages", 
+"TinyRocket", "SodorUCode", "Rocket", "MediumRocket", "FPU", 
+"RV32Rocket", "Sodor2Stage", "Sodor3Stage", "Sodor5Stage", 
+"SmallBoom", "MediumBoom", "LoopbackNICLargeBoom", "picorv32", "rubik"]

@@ -1,9 +1,9 @@
 import os, time, json
 from multiprocessing import Pool
-design_json = "/data/usr/LS-benchmark/design_timing_rgb.json"
+design_json = "/home/coguest5/LS-benchmark/design_rtl_timer.json"
 
 def run_one_design(bench, design, cmd, clk, reset, top_name):
-    bench_path = "/data/usr/LS-benchmark/{0}/{1}/".format(bench, cmd)
+    bench_path = f"/home/coguest5/LS-benchmark/{bench}/{cmd}/"
     design_dir = bench_path + design + '_' + cmd + '.v'
     print('Current Design: ', design)
     print('Current cmd: ', cmd)
@@ -12,7 +12,7 @@ def run_one_design(bench, design, cmd, clk, reset, top_name):
 def run_one_design_parrallel(design):
     bench = 'path'
     cmd = 'rtlil'
-    bench_path = "/data/usr/LS-benchmark/{0}/{1}/".format(bench, cmd)
+    bench_path = "/home/coguest5/LS-benchmark/{0}/{1}/".format(bench, cmd)
     design_dir = bench_path + design + '_' + cmd + '.v'
     print('Current Design: ', design)
     print('Current cmd: ', cmd)
@@ -47,7 +47,7 @@ def run_all_parallel(bench):
 if __name__ == '__main__':
     bench_list_all = ['itc','opencores','VexRiscv', 'chipyard', 'riscvcores','NVDLA']
     cmd = 'rtlil'
-    design_name = ''
+    design_name = 'b17'
 
     
     for bench in bench_list_all:

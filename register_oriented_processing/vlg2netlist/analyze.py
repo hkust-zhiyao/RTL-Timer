@@ -82,16 +82,16 @@ def main(clk=None, reset=None, design_name=None, cmd=None):
 
     file_lines = ast_analysis.line_lst
 
-    with open (f'/data/usr/vlg2netlist/generated_netlist_file/{top_name}_{design_name}_TYP.syn.v', 'w') as f:
+    with open (f'/home/coguest5/RTL-Timer/dataset/BOG/SOG/generated_netlist_file/{top_name}_{design_name}_TYP.syn.v', 'w') as f:
         for line in file_lines:
             f.writelines(line)
     
-    with open (f'/data/usr/vlg2netlist/generated_name_map/{design_name}_name_map.json', 'w') as f:
+    with open (f'/home/coguest5/RTL-Timer/dataset/BOG/SOG/generated_name_map/{design_name}_name_map.json', 'w') as f:
         json.dump(ast_analysis.name_map, f)
-    with open (f'/data/usr/vlg2netlist/generated_name_map/{design_name}_name_map2.json', 'w') as f:
+    with open (f'/home/coguest5/RTL-Timer/dataset/BOG/SOG/generated_name_map/{design_name}_name_map2.json', 'w') as f:
         json.dump(ast_analysis.name_map2, f)
 
-    os.system(f'cp ./sdc_template.sdc /data/usr/vlg2netlist/generated_sdc_file/{top_name}_{design_name}_TYP.sdc')
+    os.system(f'cp ./sdc_template.sdc /home/coguest5/RTL-Timer/dataset/BOG/SOG/generated_sdc_file/{top_name}_{design_name}_TYP.sdc')
 
     
 

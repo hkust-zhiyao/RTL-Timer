@@ -5,7 +5,7 @@ import numpy as np
 from word_stat import bit2word, avg_stat
 from draw_fig import draw_fig
 from eval import *
-design_json = "/data/usr/AIG_analyzer/LS-benchmark/design_timing_rgb_good.json"
+design_json = "/home/coguest5/AIG_analyzer/LS-benchmark/design_timing_rgb_good.json"
 
 cur_dir = os.getcwd()
 
@@ -31,7 +31,7 @@ def run_one_design(design_name):
     feat = pd.DataFrame(feat)
     feat.drop(feat.columns[[25]], axis=1, inplace=True)
 
-    with open (f"/data/usr/ep_prediction/ML_model/model_sog_sta_syn/saved_design_model/ep_model_{design_name}.pkl", "rb") as f:
+    with open (f"/home/coguest5/ep_prediction/ML_model/model_sog_sta_syn/saved_design_model/ep_model_{design_name}.pkl", "rb") as f:
         xgbr = pickle.load(f)
 
     pred = xgbr.predict(feat)

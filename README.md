@@ -12,16 +12,43 @@ In digital IC design, compared with post-synthesis netlists or layouts, the earl
 1. Register-oriented RTL processing 
     * Folder: register_oriented_processing
     * Preprocess the RTL data for timing modeling, including:
-        * Convert RTL to pseudo netlist (folder: vlg2netlist), note that the original RTL is bit-blastted using Yosys.
-        * Extract three levels of feature (folder: feature_extraction)
-            * Design-level
-            * Cone-level
-            * Path-level
+        * Convert RTL to pseudo netlist (folder: vlg2bog).
+            - Convert RTL code into BOG netlist (e.g., SOG)
+                ```
+                $ cd ./register_oriented_processing/vlg2bog
+                $ python3 auto_run.py
+                ```
+                Input: Verilog
+                Output: /home/coguest5/RTL-Timer/dataset/BOG/SOG/ (mapped_netlist + SDC for STA)
+            - Perform STA based on the generated SOG_netlist and SDC
+                Input: /home/coguest5/RTL-Timer/dataset/BOG/SOG/ (mapped_netlist + SDC for STA)
+                Output: BOG timing report (/home/coguest5/RTL-Timer/dataset/BOG/SOG/timing_rpt)
+        
+        * Extract path level of feature and label (folder: feature_extraction)
+            - Get path feature and label pair
+                ```
+                $ cd ./register_oriented_processing/feature_extraction
+                $ python3 get_ep_feat.py
+                $ python3 get_ep_label.py
+                ```
+                Input: BOG timing report (/home/coguest5/RTL-Timer/dataset/BOG/SOG/timing_rpt) + netlist timing report (/home/coguest5/RTL-Timer/dataset/netlist/netlist_rpt)
+                Output: bit-wise feature-label pair (/home/coguest5/RTL-Timer/modeling/feat_label/bit-wise/{design_name}.pkl)
 
 2. Timing Modeling
     * Folder: modeling
     * Customize loss function and explore different ML models to achieve both fine-grained register timing modeling and design WNS/TNS modeling
         * Register-bit regression (folder: regression_bit_ep) 
+            - Training and inference
+            ```
+            $ cd ./modeling/regression_bit_ep/train_infer
+            ## change training and testing design list in /home/coguest5/RTL-Timer/modeling/regression_bit_ep/train_infer/design_js
+            $ python3 train.py
+            $ python3 infer.py
+            ```
+            Input: bit-wise feature-label pair
+            Output: saved model for testing designs /home/coguest5/RTL-Timer/modeling/regression_bit_ep/saved_model/bit_ep_model_{test_design}.pkl
+
+
         * Register-word regression (folder: regression_word_ep)
         * Register ranking (folder: ranking)
         * Design regression (folder: regression_design_wns_tns)

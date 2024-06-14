@@ -5,11 +5,11 @@ import numpy as np
 from draw_fig import draw_fig
 from word_stat import bit2word, avg_stat
 from eval import *
-design_json = "/data/usr/AIG_analyzer/LS-benchmark/design_timing_rgb_good.json"
+design_json = "/home/coguest5/AIG_analyzer/LS-benchmark/design_timing_rgb_good.json"
 
-# design_json = "/data/usr/AIG_analyzer/LS-benchmark/design_timing_rgb.json"
+# design_json = "/home/coguest5/AIG_analyzer/LS-benchmark/design_rtl_timer.json"
 
-# design_json = "/data/usr/AIG_analyzer/LS-benchmark/design_timing_rgb_no_cache.json"
+# design_json = "/home/coguest5/AIG_analyzer/LS-benchmark/design_timing_rgb_no_cache.json"
 
 def run_one_design(design_name):
     print('Current Design: ', design_name)

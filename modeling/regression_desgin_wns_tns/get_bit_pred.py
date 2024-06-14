@@ -2,10 +2,10 @@ import os, time, json, pickle
 from multiprocessing import Pool
 import numpy as np
 from eval import *
-design_json = "/data/usr/AIG_analyzer/LS-benchmark/design_timing_rgb_good.json"
+design_json = "/home/coguest5/AIG_analyzer/LS-benchmark/design_timing_rgb_good.json"
 
 def cal_timing(delay_lst):
-    ppa_dict = "/data/usr/AST_analyzer/std_PPA.json"
+    ppa_dict = "/home/coguest5/AST_analyzer/std_PPA.json"
     with open(ppa_dict, 'r') as f:
         std_data = json.load(f)
     t_data = std_data['timing']
@@ -42,7 +42,7 @@ def cal_timing(delay_lst):
 
 def run_one_design(design_name):
     print('Current Design: ', design_name)
-    save_dir = "/data/usr/ep_modeling/model/tree_word/pred"
+    save_dir = "/home/coguest5/ep_modeling/model/tree_word/pred"
     with open (f"{save_dir}/{cmd}/{design_name}_bit_feat.pkl", "rb") as f:
         bit_feat_dict = pickle.load(f)
     with open (f"{save_dir}/{cmd}/{design_name}_bit_pred.pkl", "rb") as f:

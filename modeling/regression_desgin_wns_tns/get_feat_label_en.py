@@ -2,7 +2,7 @@ import os, time, json, pickle
 from multiprocessing import Pool
 import numpy as np
 from eval import *
-design_json = "/data/usr/AIG_analyzer/LS-benchmark/design_timing_rgb_good_tns.json"
+design_json = "/home/coguest5/AIG_analyzer/LS-benchmark/design_timing_rgb_good_tns.json"
 
 
 

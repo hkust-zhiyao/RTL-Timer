@@ -7,11 +7,11 @@ from word_stat import bit2word, avg_stat
 import matplotlib.pyplot as plt
 from eval import *
 from matplotlib.ticker import MultipleLocator, FormatStrFormatter
-design_json = "/data/usr/AIG_analyzer/LS-benchmark/design_timing_rgb_good.json"
+design_json = "/home/coguest5/AIG_analyzer/LS-benchmark/design_timing_rgb_good.json"
 
-# design_json = "/data/usr/AIG_analyzer/LS-benchmark/design_timing_rgb.json"
+# design_json = "/home/coguest5/AIG_analyzer/LS-benchmark/design_rtl_timer.json"
 
-# design_json = "/data/usr/AIG_analyzer/LS-benchmark/design_timing_rgb_no_cache.json"
+# design_json = "/home/coguest5/AIG_analyzer/LS-benchmark/design_timing_rgb_no_cache.json"
 
 def draw_scatter(pred_dict, sog_dict, aig_dict, aimg_dict, xag_dict, real_dict):
     pred_lst = np.array(list(pred_dict.values()))

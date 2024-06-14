@@ -1,0 +1,33 @@
+# read  -verific
+# read_verilog  design_path
+
+# read_verilog -lib ../source_rtl/sram/boom/*.v
+
+
+
+
+# elaborate design hierarchy
+hierarchy -top design_top
+
+
+# # the high-level stuff
+proc; 
+flatten;
+opt -fast;
+fsm;
+opt -fast;
+memory;
+opt -fast;
+# # opt; fsm; opt; memory; opt;
+
+# # # mapping to internal cell library
+techmap;
+opt -fast;
+
+rename -wire t:$*DFF*
+
+dfflibmap -liberty lib_name
+abc -liberty lib_name
+clean
+
+write_verilog save_path

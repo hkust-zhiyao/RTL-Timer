@@ -1,0 +1,7 @@
+[
+    "b18_1", "b22",
+    "systemcaes", "aes_core",
+    "VexRiscvThreeStages", "VexRiscvSmallest",
+    "TinyRocket", "SodorUCode",
+    "SmallBoom"
+]

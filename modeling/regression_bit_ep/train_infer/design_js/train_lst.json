@@ -1,0 +1,8 @@
+["b17", "b17_1", "b18",  "b20", 
+"mem_ctrl", "systemcdes",  "wb_conmax", 
+"VexRiscvTwoStagesMD",  "VexRiscvSmallestNoCsr", 
+"VexRiscvThreeStagesBar", "VexRiscvThreeStagesMD", "VexRiscvSmallAndProductive", 
+"VexRiscvFullNoMmuNoCache",  "VexRiscvTwoStages", 
+ "Rocket", "MediumRocket", "FPU", 
+"RV32Rocket", "Sodor2Stage", "Sodor3Stage", "Sodor5Stage", 
+ "MediumBoom", "LoopbackNICLargeBoom", "picorv32", "rubik"]
