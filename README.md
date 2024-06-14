@@ -45,6 +45,7 @@ In digital IC design, compared with post-synthesis netlists or layouts, the earl
             $ python3 train.py
             $ python3 infer.py
             ```
+                
                 - Input: bit-wise feature-label pair
                 - Output: saved model for testing designs /home/coguest5/RTL-Timer/modeling/regression_bit_ep/saved_model/bit_ep_model_{test_design}.pkl
 
