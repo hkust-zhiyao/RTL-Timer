@@ -61,6 +61,7 @@ Note: Please change all the path to your current path first.
     * Folder: optimization
     * We showcase an example of utilizing the predicted fine-grained arrival timing information on each register to enable 2 optimization options (i.e., **group_path** and **set_dont_retime**), in the TCL file "example_syn_option.tcl"
 
+## Ealier version of our RTL-stage PPA modeling work: [MasterRTL](https://github.com/hkust-zhiyao/MasterRTL)
 
 ## Citation
 If RTL-Timer could help your project, please cite our work:
