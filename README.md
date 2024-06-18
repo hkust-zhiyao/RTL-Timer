@@ -8,6 +8,7 @@ In digital IC design, compared with post-synthesis netlists or layouts, the earl
 
 
 ## Repo Structure
+Note: Please change all the path to your current path first.
 
 1. Register-oriented RTL processing 
     * Folder: register_oriented_processing
@@ -19,10 +20,10 @@ In digital IC design, compared with post-synthesis netlists or layouts, the earl
                 $ python3 auto_run.py
                 ```
                 - Input: Verilog
-                - Output: /home/coguest5/RTL-Timer/dataset/BOG/SOG/ (mapped_netlist + SDC for STA)
+                - Output: /home/coguest5/RTL-Timer/dataset_example/BOG/SOG/ (mapped_netlist + SDC for STA)
             - Perform STA based on the generated SOG_netlist and SDC
-                - Input: /home/coguest5/RTL-Timer/dataset/BOG/SOG/ (mapped_netlist + SDC for STA)
-                - Output: BOG timing report (/home/coguest5/RTL-Timer/dataset/BOG/SOG/timing_rpt)
+                - Input: /home/coguest5/RTL-Timer/dataset_example/BOG/SOG/ (mapped_netlist + SDC for STA)
+                - Output: BOG timing report (/home/coguest5/RTL-Timer/dataset_example/BOG/SOG/timing_rpt)
         
         * Extract path level of feature and label (folder: feature_extraction)
             - Get path feature and label pair
@@ -31,27 +32,29 @@ In digital IC design, compared with post-synthesis netlists or layouts, the earl
                 $ python3 get_ep_feat.py
                 $ python3 get_ep_label.py
                 ```
-                - Input: BOG timing report (/home/coguest5/RTL-Timer/dataset/BOG/SOG/timing_rpt) + netlist timing report (/home/coguest5/RTL-Timer/dataset/netlist/netlist_rpt)
+                - Input: BOG timing report (/home/coguest5/RTL-Timer/dataset_example/BOG/SOG/timing_rpt) + netlist timing report (/home/coguest5/RTL-Timer/dataset_example/netlist/netlist_rpt)
                 - Output: bit-wise feature-label pair (/home/coguest5/RTL-Timer/modeling/feat_label/bit-wise/{design_name}.pkl)
 
 2. Timing Modeling
     * Folder: modeling
     * Customize loss function and explore different ML models to achieve both fine-grained register timing modeling and design WNS/TNS modeling
         * Register-bit regression (folder: regression_bit_ep) 
-            - Training and inference
-            ```
-            $ cd ./modeling/regression_bit_ep/train_infer
-            ## change training and testing design list in /home/coguest5/RTL-Timer/modeling/regression_bit_ep/train_infer/design_js
-            $ python3 train.py
-            $ python3 infer.py
-            ```
-                
+            1. Most simple version: single representation (e.g., SOG) w/o ensemble learning + single critical path (slowest) w/o sampling 
+                - training and inference
+                ```
+                $ cd ./modeling/regression_bit_ep/train_infer
+                ## change training and testing design list in /home/coguest5/RTL-Timer/modeling/regression_bit_ep/train_infer/design_js
+                $ python3 train.py
+                $ python3 infer.py
+                ```
                 - Input: bit-wise feature-label pair
                 - Output: saved model for testing designs /home/coguest5/RTL-Timer/modeling/regression_bit_ep/saved_model/bit_ep_model_{test_design}.pkl
+            2. Enhanced version in paper: sample other paths
+                - Other timing paths are obtained also in Prime Time: first specify the start and end registers, and then report the timing of the path
+                - The customized loss function is implemented in folder "cus_loss", function "retain_max_every_n" in cus_loss.py
 
-
-        * Register-word regression (folder: regression_word_ep)
-        * Register ranking (folder: ranking)
+        * Register-word regression (folder: regression_word_ep) & ranking (folder: ranking_ep)
+            - The bit-wise predictions from all four representations are concated as the feature for signal-wise modeling (ensemble learning)
         * Design regression (folder: regression_design_wns_tns)
 
 3. Timing Optimization

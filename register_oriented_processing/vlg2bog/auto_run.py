@@ -13,6 +13,7 @@ def run_one_design(para):
     
     ### change path here ###
     ## 1. original RTL code path
+    ## change the RTL path first
     design_path = f"/home/coguest5/LS-benchmark/{bench}/rtl/{design}/"
     ## 2. BOG output path
     save_path = f"/home/coguest5/RTL-Timer/dataset/BOG/{cmd}/generated_netlist_file/{top_name}_{design}_TYP.syn.v"
