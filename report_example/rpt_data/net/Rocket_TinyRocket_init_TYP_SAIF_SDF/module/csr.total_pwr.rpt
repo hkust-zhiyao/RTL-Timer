@@ -1,0 +1,32 @@
+****************************************
+Report : Averaged Power
+Design : Rocket/csr (CSRFile_0)
+Version: T-2022.03-SP3
+Date   : Thu May 29 16:13:47 2025
+****************************************
+
+
+
+  Attributes
+  ----------
+      i  -  Including register clock pin internal power
+      u  -  User defined power group
+
+                        Internal  Switching  Leakage    Total
+Power Group             Power     Power      Power      Power   (     %)  Attrs
+--------------------------------------------------------------------------------
+clock_network           3.329e-03 2.448e-04 1.043e-06 3.575e-03 (21.44%)  i
+register                5.315e-03 2.829e-03 5.276e-05 8.196e-03 (49.15%)  
+combinational           2.289e-03 2.537e-03 7.913e-05 4.905e-03 (29.41%)  
+sequential                 0.0000    0.0000    0.0000    0.0000 ( 0.00%)  
+memory                     0.0000    0.0000    0.0000    0.0000 ( 0.00%)  
+io_pad                     0.0000    0.0000    0.0000    0.0000 ( 0.00%)  
+black_box                  0.0000    0.0000    0.0000    0.0000 ( 0.00%)  
+
+  Net Switching Power  = 5.610e-03   (33.64%)
+  Cell Internal Power  =    0.0109   (65.56%)
+  Cell Leakage Power   = 1.329e-04   ( 0.80%)
+                         ---------
+Total Power            =    0.0167  (100.00%)
+
+1

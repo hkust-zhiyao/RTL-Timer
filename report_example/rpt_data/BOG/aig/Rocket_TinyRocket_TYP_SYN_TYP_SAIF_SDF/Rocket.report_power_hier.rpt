@@ -1,0 +1,25 @@
+Information: Running switching activity propagation with 8 threads!
+Information: Running averaged power analysis... (PWR-601)
+Information: Running power calculation with 8 threads. (PWR-602)
+****************************************
+Report : Averaged Power
+	-hierarchy
+	-levels 1
+	-nosplit
+Design : Rocket
+Version: T-2022.03-SP3
+Date   : Tue May 20 02:38:51 2025
+****************************************
+
+
+
+                                      Int      Switch   Leak     Total
+Hierarchy                             Power    Power    Power    Power    %
+----------------------------------------------------------------------------------
+Rocket                                4.29e-02 7.32e-03 1.24e-03 5.15e-02 100.0
+  alu (ALU)                           3.26e-04 2.29e-04 5.08e-05 6.05e-04   1.2
+  bpu (BreakpointUnit)                9.10e-05 5.40e-05 1.42e-05 1.59e-04   0.3
+  csr (CSRFile)                       9.32e-03 2.57e-04 2.42e-04 9.82e-03  19.1
+  ibuf (IBuf)                         1.21e-03 1.67e-03 4.27e-05 2.93e-03   5.7
+  div (MulDiv)                        1.45e-03 3.07e-06 2.43e-04 1.69e-03   3.3
+1

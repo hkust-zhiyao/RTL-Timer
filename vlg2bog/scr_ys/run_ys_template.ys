@@ -1,0 +1,32 @@
+# read  -verific
+# read_verilog  ../LS-benchmark/bench_name/rtl/design_name/*.v*
+
+# read_verilog -lib ../source_rtl/sram/boom/*.v
+
+
+# blackbox TS5N40LPHSA64X22M2S
+
+# elaborate design hierarchy
+hierarchy -top top_name
+
+
+# # the high-level stuff
+proc; 
+opt -fast;
+fsm;
+opt -fast;
+memory;
+opt -fast;
+# # opt; fsm; opt; memory; opt;
+
+# # # mapping to internal cell library
+techmap;
+opt -fast;
+
+rename -wire t:$*DFF*
+
+dfflibmap -liberty ./lib/nangate45_cmd.lib
+abc -liberty ./lib/nangate45_cmd.lib
+clean
+
+write_verilog ../bog_tmp/design_name.cmd.v

@@ -1,0 +1,32 @@
+****************************************
+Report : Averaged Power
+Design : Rocket/ibuf (IBuf)
+Version: T-2022.03-SP3
+Date   : Tue May 20 02:38:54 2025
+****************************************
+
+
+
+  Attributes
+  ----------
+      i  -  Including register clock pin internal power
+      u  -  User defined power group
+
+                        Internal  Switching  Leakage    Total
+Power Group             Power     Power      Power      Power   (     %)  Attrs
+--------------------------------------------------------------------------------
+clock_network           3.820e-04    0.0000    0.0000 3.820e-04 (13.06%)  i
+register                3.485e-05 1.359e-05 4.033e-06 5.248e-05 ( 1.79%)  
+combinational           7.981e-04 1.654e-03 3.870e-05 2.491e-03 (85.15%)  
+sequential                 0.0000    0.0000    0.0000    0.0000 ( 0.00%)  
+memory                     0.0000    0.0000    0.0000    0.0000 ( 0.00%)  
+io_pad                     0.0000    0.0000    0.0000    0.0000 ( 0.00%)  
+black_box                  0.0000    0.0000    0.0000    0.0000 ( 0.00%)  
+
+  Net Switching Power  = 1.667e-03   (57.00%)
+  Cell Internal Power  = 1.215e-03   (41.54%)
+  Cell Leakage Power   = 4.273e-05   ( 1.46%)
+                         ---------
+Total Power            = 2.925e-03  (100.00%)
+
+1

@@ -1,0 +1,477 @@
+{
+    "hierarch": {
+        "Rocket": {
+            "inter_pwr": 85.2,
+            "switch_pwr": 65.10000000000001,
+            "leak_pwr": 1.17,
+            "total_pwr": 151.0,
+            "percent": 100.0
+        },
+        "alu": {
+            "inter_pwr": 3.4,
+            "switch_pwr": 3.7399999999999998,
+            "leak_pwr": 0.0658,
+            "total_pwr": 7.21,
+            "percent": 4.8
+        },
+        "ibuf": {
+            "inter_pwr": 6.38,
+            "switch_pwr": 6.36,
+            "leak_pwr": 0.104,
+            "total_pwr": 12.8,
+            "percent": 8.5
+        },
+        "bpu": {
+            "inter_pwr": 0.895,
+            "switch_pwr": 0.739,
+            "leak_pwr": 0.013,
+            "total_pwr": 1.65,
+            "percent": 1.1
+        },
+        "csr": {
+            "inter_pwr": 14.5,
+            "switch_pwr": 9.709999999999999,
+            "leak_pwr": 0.244,
+            "total_pwr": 24.400000000000002,
+            "percent": 16.1
+        },
+        "div": {
+            "inter_pwr": 14.3,
+            "switch_pwr": 16.1,
+            "leak_pwr": 0.154,
+            "total_pwr": 30.599999999999998,
+            "percent": 20.2
+        },
+        "Rocket_rest": {
+            "inter_pwr": 45.72500000000001,
+            "switch_pwr": 28.451000000000008,
+            "leak_pwr": 0.5892,
+            "total_pwr": 74.34,
+            "percent": 49.3
+        }
+    },
+    "group": {
+        "clock_network": {
+            "inter_pwr": 17.4,
+            "switch_pwr": 8.514000000000001,
+            "leak_pwr": 0.008319,
+            "total_pwr": 25.9,
+            "percent": 17.11
+        },
+        "register": {
+            "inter_pwr": 17.7,
+            "switch_pwr": 7.765000000000001,
+            "leak_pwr": 0.18080000000000002,
+            "total_pwr": 25.6,
+            "percent": 16.93
+        },
+        "combinational": {
+            "inter_pwr": 50.1,
+            "switch_pwr": 48.800000000000004,
+            "leak_pwr": 0.9797,
+            "total_pwr": 99.9,
+            "percent": 65.96
+        },
+        "sequential": {
+            "inter_pwr": 0.0,
+            "switch_pwr": 0.0,
+            "leak_pwr": 0.0,
+            "total_pwr": 0.0,
+            "percent": 0.0
+        },
+        "memory": {
+            "inter_pwr": 0.0,
+            "switch_pwr": 0.0,
+            "leak_pwr": 0.0,
+            "total_pwr": 0.0,
+            "percent": 0.0
+        },
+        "io_pad": {
+            "inter_pwr": 0.0,
+            "switch_pwr": 0.0,
+            "leak_pwr": 0.0,
+            "total_pwr": 0.0,
+            "percent": 0.0
+        },
+        "black_box": {
+            "inter_pwr": 0.0,
+            "switch_pwr": 0.0,
+            "leak_pwr": 0.0,
+            "total_pwr": 0.0,
+            "percent": 0.0
+        }
+    },
+    "module": {
+        "Rocket": {
+            "group": {
+                "clock_network": {
+                    "inter_pwr": 17.4,
+                    "switch_pwr": 8.514000000000001,
+                    "leak_pwr": 0.008319,
+                    "total_pwr": 25.9,
+                    "percent": 17.11
+                },
+                "register": {
+                    "inter_pwr": 17.7,
+                    "switch_pwr": 7.765000000000001,
+                    "leak_pwr": 0.18080000000000002,
+                    "total_pwr": 25.6,
+                    "percent": 16.93
+                },
+                "combinational": {
+                    "inter_pwr": 50.1,
+                    "switch_pwr": 48.800000000000004,
+                    "leak_pwr": 0.9797,
+                    "total_pwr": 99.9,
+                    "percent": 65.96
+                },
+                "sequential": {
+                    "inter_pwr": 0.0,
+                    "switch_pwr": 0.0,
+                    "leak_pwr": 0.0,
+                    "total_pwr": 0.0,
+                    "percent": 0.0
+                },
+                "memory": {
+                    "inter_pwr": 0.0,
+                    "switch_pwr": 0.0,
+                    "leak_pwr": 0.0,
+                    "total_pwr": 0.0,
+                    "percent": 0.0
+                },
+                "io_pad": {
+                    "inter_pwr": 0.0,
+                    "switch_pwr": 0.0,
+                    "leak_pwr": 0.0,
+                    "total_pwr": 0.0,
+                    "percent": 0.0
+                },
+                "black_box": {
+                    "inter_pwr": 0.0,
+                    "switch_pwr": 0.0,
+                    "leak_pwr": 0.0,
+                    "total_pwr": 0.0,
+                    "percent": 0.0
+                }
+            }
+        },
+        "alu": {
+            "group": {
+                "clock_network": {
+                    "inter_pwr": 0.0,
+                    "switch_pwr": 0.0,
+                    "leak_pwr": 0.0,
+                    "total_pwr": 0.0,
+                    "percent": 0.0
+                },
+                "register": {
+                    "inter_pwr": 0.0,
+                    "switch_pwr": 0.0,
+                    "leak_pwr": 0.0,
+                    "total_pwr": 0.0,
+                    "percent": 0.0
+                },
+                "combinational": {
+                    "inter_pwr": 3.399,
+                    "switch_pwr": 3.741,
+                    "leak_pwr": 0.06581,
+                    "total_pwr": 7.2059999999999995,
+                    "percent": 100.0
+                },
+                "sequential": {
+                    "inter_pwr": 0.0,
+                    "switch_pwr": 0.0,
+                    "leak_pwr": 0.0,
+                    "total_pwr": 0.0,
+                    "percent": 0.0
+                },
+                "memory": {
+                    "inter_pwr": 0.0,
+                    "switch_pwr": 0.0,
+                    "leak_pwr": 0.0,
+                    "total_pwr": 0.0,
+                    "percent": 0.0
+                },
+                "io_pad": {
+                    "inter_pwr": 0.0,
+                    "switch_pwr": 0.0,
+                    "leak_pwr": 0.0,
+                    "total_pwr": 0.0,
+                    "percent": 0.0
+                },
+                "black_box": {
+                    "inter_pwr": 0.0,
+                    "switch_pwr": 0.0,
+                    "leak_pwr": 0.0,
+                    "total_pwr": 0.0,
+                    "percent": 0.0
+                }
+            }
+        },
+        "ibuf": {
+            "group": {
+                "clock_network": {
+                    "inter_pwr": 0.42269999999999996,
+                    "switch_pwr": 0.1434,
+                    "leak_pwr": 8.663e-05,
+                    "total_pwr": 0.5662,
+                    "percent": 4.41
+                },
+                "register": {
+                    "inter_pwr": 0.37429999999999997,
+                    "switch_pwr": 0.10450000000000001,
+                    "leak_pwr": 0.003953,
+                    "total_pwr": 0.4828,
+                    "percent": 3.76
+                },
+                "combinational": {
+                    "inter_pwr": 5.581,
+                    "switch_pwr": 6.116,
+                    "leak_pwr": 0.09975999999999999,
+                    "total_pwr": 11.799999999999999,
+                    "percent": 91.83
+                },
+                "sequential": {
+                    "inter_pwr": 0.0,
+                    "switch_pwr": 0.0,
+                    "leak_pwr": 0.0,
+                    "total_pwr": 0.0,
+                    "percent": 0.0
+                },
+                "memory": {
+                    "inter_pwr": 0.0,
+                    "switch_pwr": 0.0,
+                    "leak_pwr": 0.0,
+                    "total_pwr": 0.0,
+                    "percent": 0.0
+                },
+                "io_pad": {
+                    "inter_pwr": 0.0,
+                    "switch_pwr": 0.0,
+                    "leak_pwr": 0.0,
+                    "total_pwr": 0.0,
+                    "percent": 0.0
+                },
+                "black_box": {
+                    "inter_pwr": 0.0,
+                    "switch_pwr": 0.0,
+                    "leak_pwr": 0.0,
+                    "total_pwr": 0.0,
+                    "percent": 0.0
+                }
+            }
+        },
+        "bpu": {
+            "group": {
+                "clock_network": {
+                    "inter_pwr": 0.0,
+                    "switch_pwr": 0.0,
+                    "leak_pwr": 0.0,
+                    "total_pwr": 0.0,
+                    "percent": 0.0
+                },
+                "register": {
+                    "inter_pwr": 0.0,
+                    "switch_pwr": 0.0,
+                    "leak_pwr": 0.0,
+                    "total_pwr": 0.0,
+                    "percent": 0.0
+                },
+                "combinational": {
+                    "inter_pwr": 0.8947999999999999,
+                    "switch_pwr": 0.7389,
+                    "leak_pwr": 0.01296,
+                    "total_pwr": 1.647,
+                    "percent": 100.0
+                },
+                "sequential": {
+                    "inter_pwr": 0.0,
+                    "switch_pwr": 0.0,
+                    "leak_pwr": 0.0,
+                    "total_pwr": 0.0,
+                    "percent": 0.0
+                },
+                "memory": {
+                    "inter_pwr": 0.0,
+                    "switch_pwr": 0.0,
+                    "leak_pwr": 0.0,
+                    "total_pwr": 0.0,
+                    "percent": 0.0
+                },
+                "io_pad": {
+                    "inter_pwr": 0.0,
+                    "switch_pwr": 0.0,
+                    "leak_pwr": 0.0,
+                    "total_pwr": 0.0,
+                    "percent": 0.0
+                },
+                "black_box": {
+                    "inter_pwr": 0.0,
+                    "switch_pwr": 0.0,
+                    "leak_pwr": 0.0,
+                    "total_pwr": 0.0,
+                    "percent": 0.0
+                }
+            }
+        },
+        "csr": {
+            "group": {
+                "clock_network": {
+                    "inter_pwr": 4.037,
+                    "switch_pwr": 1.8439999999999999,
+                    "leak_pwr": 0.002946,
+                    "total_pwr": 5.883,
+                    "percent": 24.1
+                },
+                "register": {
+                    "inter_pwr": 5.409,
+                    "switch_pwr": 2.937,
+                    "leak_pwr": 0.05359,
+                    "total_pwr": 8.4,
+                    "percent": 34.41
+                },
+                "combinational": {
+                    "inter_pwr": 5.011,
+                    "switch_pwr": 4.929,
+                    "leak_pwr": 0.1877,
+                    "total_pwr": 10.1,
+                    "percent": 41.49
+                },
+                "sequential": {
+                    "inter_pwr": 0.0,
+                    "switch_pwr": 0.0,
+                    "leak_pwr": 0.0,
+                    "total_pwr": 0.0,
+                    "percent": 0.0
+                },
+                "memory": {
+                    "inter_pwr": 0.0,
+                    "switch_pwr": 0.0,
+                    "leak_pwr": 0.0,
+                    "total_pwr": 0.0,
+                    "percent": 0.0
+                },
+                "io_pad": {
+                    "inter_pwr": 0.0,
+                    "switch_pwr": 0.0,
+                    "leak_pwr": 0.0,
+                    "total_pwr": 0.0,
+                    "percent": 0.0
+                },
+                "black_box": {
+                    "inter_pwr": 0.0,
+                    "switch_pwr": 0.0,
+                    "leak_pwr": 0.0,
+                    "total_pwr": 0.0,
+                    "percent": 0.0
+                }
+            }
+        },
+        "div": {
+            "group": {
+                "clock_network": {
+                    "inter_pwr": 0.7165,
+                    "switch_pwr": 0.1939,
+                    "leak_pwr": 0.0005646,
+                    "total_pwr": 0.9108999999999999,
+                    "percent": 2.97
+                },
+                "register": {
+                    "inter_pwr": 0.9297,
+                    "switch_pwr": 0.5902999999999999,
+                    "leak_pwr": 0.009371,
+                    "total_pwr": 1.529,
+                    "percent": 4.99
+                },
+                "combinational": {
+                    "inter_pwr": 12.7,
+                    "switch_pwr": 15.299999999999999,
+                    "leak_pwr": 0.1445,
+                    "total_pwr": 28.2,
+                    "percent": 92.03
+                },
+                "sequential": {
+                    "inter_pwr": 0.0,
+                    "switch_pwr": 0.0,
+                    "leak_pwr": 0.0,
+                    "total_pwr": 0.0,
+                    "percent": 0.0
+                },
+                "memory": {
+                    "inter_pwr": 0.0,
+                    "switch_pwr": 0.0,
+                    "leak_pwr": 0.0,
+                    "total_pwr": 0.0,
+                    "percent": 0.0
+                },
+                "io_pad": {
+                    "inter_pwr": 0.0,
+                    "switch_pwr": 0.0,
+                    "leak_pwr": 0.0,
+                    "total_pwr": 0.0,
+                    "percent": 0.0
+                },
+                "black_box": {
+                    "inter_pwr": 0.0,
+                    "switch_pwr": 0.0,
+                    "leak_pwr": 0.0,
+                    "total_pwr": 0.0,
+                    "percent": 0.0
+                }
+            }
+        },
+        "Rocket_rest": {
+            "group": {
+                "clock_network": {
+                    "inter_pwr": 12.223799999999999,
+                    "switch_pwr": 6.332700000000001,
+                    "leak_pwr": 0,
+                    "total_pwr": 18.5399,
+                    "percent": 0
+                },
+                "register": {
+                    "inter_pwr": 10.987,
+                    "switch_pwr": 4.1332,
+                    "leak_pwr": 0,
+                    "total_pwr": 15.188200000000002,
+                    "percent": 0
+                },
+                "combinational": {
+                    "inter_pwr": 22.514200000000002,
+                    "switch_pwr": 17.975100000000005,
+                    "leak_pwr": 0,
+                    "total_pwr": 40.947,
+                    "percent": 0
+                },
+                "sequential": {
+                    "inter_pwr": 0,
+                    "switch_pwr": 0,
+                    "leak_pwr": 0,
+                    "total_pwr": 0,
+                    "percent": 0
+                },
+                "memory": {
+                    "inter_pwr": 0,
+                    "switch_pwr": 0,
+                    "leak_pwr": 0,
+                    "total_pwr": 0,
+                    "percent": 0
+                },
+                "io_pad": {
+                    "inter_pwr": 0,
+                    "switch_pwr": 0,
+                    "leak_pwr": 0,
+                    "total_pwr": 0,
+                    "percent": 0
+                },
+                "black_box": {
+                    "inter_pwr": 0,
+                    "switch_pwr": 0,
+                    "leak_pwr": 0,
+                    "total_pwr": 0,
+                    "percent": 0
+                }
+            }
+        }
+    }
+}

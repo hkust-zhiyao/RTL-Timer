@@ -1,0 +1,73 @@
+****************************************
+Report : qor
+Design : Rocket
+Version: T-2022.03-SP3
+Date   : Thu May 29 16:13:43 2025
+****************************************
+
+  Timing Path Group '**clock_gating_default**' (max_delay/setup)
+  ---------------------------------------------
+  Levels of Logic:                            9
+  Critical Path Length:                   0.757
+  Critical Path Slack:                   -0.497
+  Total Negative Slack:                  -8.039
+  No. of Violating Paths:                    21
+  ---------------------------------------------
+
+  Timing Path Group 'CLK_clock' (max_delay/setup)
+  ---------------------------------------------
+  Levels of Logic:                           23
+  Critical Path Length:                   1.315
+  Critical Path Slack:                   -1.007
+  Total Negative Slack:               -1601.896
+  No. of Violating Paths:                  2123
+  ---------------------------------------------
+
+  Timing Path Group '**clock_gating_default**' (min_delay/hold)
+  ---------------------------------------------
+  Levels of Logic:                            2
+  Critical Path Length:                   0.128
+  Critical Path Slack:                   -0.015
+  Total Negative Slack:                  -0.015
+  No. of Violating Paths:                     1
+  ---------------------------------------------
+
+  Timing Path Group 'CLK_clock' (min_delay/hold)
+  ---------------------------------------------
+  Levels of Logic:                            1
+  Critical Path Length:                   0.094
+  Critical Path Slack:                   -0.067
+  Total Negative Slack:                 -27.292
+  No. of Violating Paths:                  1574
+  ---------------------------------------------
+
+  Area
+  ---------------------------------------------
+  Net Interconnect area:                  0.000
+  Total cell area:                    27003.283
+  Design Area:                        27003.283
+  ---------------------------------------------
+
+
+  Cell & Pin Count
+  ---------------------------------------------
+  Pin Count:                              58125
+  Hierarchical Cell Count:                   28
+  Hierarchical Port Count:                 1860
+  Leaf Cell Count:                        17001
+  ---------------------------------------------
+
+
+  Design Rule Violations
+  ---------------------------------------------
+  Total No. of Pins in Design:            58125
+  clock_gating_setup Count:                  21
+  clock_gating_hold Count:                    1
+  max_fanout Count:                          19
+  clock_gating_setup Cost:                8.039
+  clock_gating_hold Cost:                 0.015
+  max_fanout Cost:                       71.000
+  Total DRC Cost:                        79.054
+  ---------------------------------------------
+
+1

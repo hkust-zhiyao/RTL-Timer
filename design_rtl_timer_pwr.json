@@ -1,0 +1,64 @@
+{
+    "iscas":{
+
+    },
+    "itc":{
+        "b17": ["b17", "clock", "reset"],
+        "b17_1": ["b17_1", "clock", "reset"],
+        "b18": ["b18", "clock", "reset"],
+        "b18_1": ["b18_1", "clock", "reset"],
+        "b22": ["b22", "clock", "reset"],
+        "b20": ["b20", "clock", "reset"]
+    },
+    
+    "opencores":{
+        "mem_ctrl" : ["mc_top", "clk_i", "reset"],
+        "systemcdes" : ["des", "clk", "reset"],
+        "systemcaes" : ["aes", "clk", "reset"],
+
+        "aes_core" : ["aes_cipher_top", "clk", "reset"],
+        "wb_conmax" : ["wb_conmax_top", "clk_i", "reset"]
+    },
+    
+    "VexRiscv":{
+        "VexRiscvTwoStagesMD" : ["VexRiscvTwoStagesMD", "clk", "reset"],
+        "VexRiscvThreeStages" : ["VexRiscvThreeStages", "clk", "reset"],
+        "VexRiscvSmallestNoCsr" : ["VexRiscvSmallestNoCsr", "clk", "reset"],
+        "VexRiscvThreeStagesBar" : ["VexRiscvThreeStagesBar", "clk", "reset"],
+
+
+        "VexRiscvThreeStagesMD" : ["VexRiscvThreeStagesMD", "clk", "reset"],
+        "VexRiscvSmallAndProductive" : ["VexRiscvSmallAndProductive", "clk", "reset"],
+        "VexRiscvFullNoMmuNoCache" : ["VexRiscvFullNoMmuNoCache", "clk", "reset"],
+
+
+        "VexRiscvSmallest" : ["VexRiscvSmallest", "clk", "reset"],
+
+        
+
+        "VexRiscvTwoStages" : ["VexRiscvTwoStages", "clk", "reset"]
+    },
+
+    
+    "riscvcores":{
+        "picorv32" : ["picorv32", "clk", "resetn"]
+    },
+    "NVDLA":{
+        "rubik" : ["NV_NVDLA_rubik", "nvdla_core_clk", "reset"]
+    },
+    "chipyard":{
+        "TinyRocket" : ["Rocket", "clock", "reset"],
+        "SodorUCode" : ["Core", "clock", "reset"],
+        "Rocket" : ["Rocket", "clock", "reset"],
+        "MediumRocket" : ["Rocket", "clock", "reset"],
+        "FPU" : ["FPU", "clock", "reset"],
+        "RV32Rocket" :["Rocket", "clock", "reset"],
+        "Sodor2Stage" : ["Core", "clock", "reset"],
+        "Sodor3Stage" : ["Core", "clock", "reset"],
+        "Sodor5Stage" : ["Core", "clock", "reset"],
+        "SmallBoom" : ["BoomCore", "clock", "reset"],
+        "MediumBoom" : ["BoomCore", "clock", "reset"],
+        "LoopbackNICLargeBoom" : ["LoopBranchPredictorBank", "clock", "reset"]
+    }
+    }
+        

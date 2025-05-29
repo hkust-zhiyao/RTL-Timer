@@ -1,0 +1,2163 @@
+
+                                 PrimeTime (R)
+
+               Version T-2022.03-SP3 for linux64 - Jul 12, 2022 
+
+                    Copyright (c) 1988 - 2022 Synopsys, Inc.
+   This software and the associated documentation are proprietary to Synopsys,
+ Inc. This software may only be used in accordance with the terms and conditions
+ of a written license agreement with Synopsys, Inc. All other use, reproduction,
+   or distribution of this software is strictly prohibited.  Licensed Products
+     communicate with Synopsys servers for the purpose of providing software
+    updates, detecting software piracy and verifying that customers are using
+    Licensed Products in conformity with the applicable License Key for such
+  Licensed Products. Synopsys will use information gathered in connection with
+    this process to deliver software updates and pursue software pirates and
+                                   infringers.
+
+ Inclusivity & Diversity - Visit SolvNetPlus to read the "Synopsys Statement on
+            Inclusivity and Diversity" (Refer to article 000036315 at
+                        https://solvnetplus.synopsys.com)
+Information: Defining new variable 'user_parameters'. (CMD-041)
+Information: Defining new variable 'log_name'. (CMD-041)
+Information: Defining new variable 'phase'. (CMD-041)
+Information: Defining new variable 'tool'. (CMD-041)
+Information: Defining new variable 'sdc_out'. (CMD-041)
+Information: Defining new variable 'extract_db'. (CMD-041)
+Information: Defining new variable 'power_analysis'. (CMD-041)
+Information: Defining new variable 'gen_sdf'. (CMD-041)
+Information: Defining new variable 'top'. (CMD-041)
+Information: Defining new variable 'rc_para'. (CMD-041)
+Information: Defining new variable 'flatten'. (CMD-041)
+Information: Defining new variable 'corner'. (CMD-041)
+#========================================================================
+#   
+#   TCL Script
+#   
+#========================================================================
+#========================================================
+#   Modifying variables 
+#========================================================
+#========================================================
+#   Define original clock
+#========================================================
+#the original clock in $clk_list will be created as CLK_xxx which xxx is the port(pin) name
+#   port(pin) name              #clock freq of different corner
+set clock_list {
+     clock                             MAX:2000 TYP:2000 MIN:2000
+}
+
+     clock                             MAX:2000 TYP:2000 MIN:2000
+
+#========================================================
+#   Define clock generated clock
+#========================================================
+set generated_clock_txt {
+}
+
+
+#========================================================
+#   Define clock generated clock
+#========================================================
+set clk_group_txt {
+}
+
+
+#========================================================
+#   define other timing constraint
+#========================================================
+set io_constraint_txt {
+}
+
+
+set timing_exception_txt {
+}
+
+
+#========================================================
+#   syn common flow
+#========================================================
+source -c -v -e ../../scr/flow_com/pt_common_flow.tcl
+#========================================================================
+#   
+#   TCL Script
+#   
+#========================================================================
+source -c -e -v ../../../func/flow_common_func.tcl
+#========================================================================
+#   
+#   TCL Script
+#   
+#========================================================================
+proc gen_harden_array {father lv_f} {
+    if {$father == ""} {set ::tree_line_num 0}
+    set tree_line_list  [regexp -all -inline { *?\w.*?\n} $::harden_ip_tree]
+    while {$::tree_line_num < [llength $tree_line_list]} {
+        set tree_line   [regsub -all {\t} [lindex $tree_line_list $::tree_line_num] "    "]
+        regexp {(\w+) +[{\"](.*)[}\"]}  $tree_line match module ip_list
+        set cur_lv  [string length [regexp -inline {^ *} $tree_line]]
+        #echo $tree_line $cur_lv $lv_f
+        if {$cur_lv <= $lv_f} {return }
+        if {[expr $::tree_line_num + 1] < [llength $tree_line_list]} {
+            set tree_line_nx [regsub -all {\t} [lindex $tree_line_list [expr $::tree_line_num+1] ] "    "]
+            set next_lv [string length [regexp -inline {^ *} $tree_line_nx]]
+        } else {
+            set next_lv $cur_lv
+        }
+        set ::module_${module}(ip)       $ip_list
+        set ::module_${module}(lv)       $cur_lv
+        set ::module_${module}(father)   $father
+        set ::module_${module}(son)      ""
+        if {$father != ""} {
+            lappend ::module_${father}(son)    $module
+        }
+        incr ::tree_line_num
+        #echo  $cur_lv $next_lv
+        if {$next_lv > $cur_lv} {
+            #echo $module
+            gen_harden_array $module $cur_lv
+        } elseif {$next_lv < $cur_lv} {
+            return 
+        } 
+    }
+}
+proc gen_all_son {module} {
+    set grandson ""
+    foreach ason [set ::module_${module}(son)] {
+        if {[set ::module_${ason}(son)] != ""} {
+            set grandson [concat [gen_all_son $ason ] $grandson]
+        }
+    }
+    set ::module_${module}(all_son) [concat [set ::module_${module}(son)] $grandson]
+    return [set ::module_${module}(all_son)]
+}
+proc get_harden_lvl {module {lvl 0}} {
+    if {[set ::module_${module}(father)] == "" || $module == $::top} {
+        return $lvl
+    } else {
+        get_harden_lvl [set ::module_${module}(father)] [incr lvl]
+    }
+}
+proc lsum {sum_list} {
+    set sum_value 0
+    foreach anum $sum_list {
+        set sum_value [expr $sum_value + $anum]
+    }
+    return $sum_value
+}
+proc high_fill {width fill_char num} {
+    set fill_char [string repeat $fill_char [expr $width-[string length $num]]]
+    return "$fill_char$num"
+}
+proc read_filelist {filelist {vformat ""}} {
+    global chip_process_node
+    global std_cell_form
+    global voltage_channel
+    global track
+    global tool
+    global define_list
+    global RTL_PATH
+
+    if {[regexp {\-sv} $vformat match]} {
+        set dc_rd_cmd "analyze -format sverilog -vcs"
+        set fm_rd_cmd "read_sverilog -r -work_library WORK -vcs"
+    } elseif {[regexp {\-vhdl} $vformat match]} {
+        set dc_rd_cmd "analyze -format vhdl -vcs"
+        set fm_rd_cmd "read_vhdl -r -work_library WORK -vcs"
+    } else {
+        set dc_rd_cmd "analyze -format verilog -vcs"
+        set fm_rd_cmd "read_verilog -r -work_library WORK -vcs"
+    }
+
+    if {$tool == "DC"} {
+        set rd_cmd $dc_rd_cmd
+    } else {
+        set rd_cmd $fm_rd_cmd
+    }
+
+    set std_def [regsub -all {[^{}]*?\$} $std_cell_form {$}]
+    set std_def [regsub -all {[^{}]*?$}  $std_def       ""]
+    regexp {(\w+VT)(\w+)} $voltage_channel match std_def_vt std_def_cl
+    set std_def [regsub {\${track_map}} $std_def $track]
+    set std_def [regsub {\${vt_map}}    $std_def $std_def_vt]
+    set std_def [regsub {\${cl_map}}    $std_def $std_def_cl]
+    set std_def [string toupper $chip_process_node]_$std_def
+    set std_def [regsub -all {\$|\s}    $std_def       ""]
+
+    set rd_cmd "$rd_cmd \{+define+$std_def+ $define_list "
+    foreach af $filelist {
+        if {[regexp {\w+\.f$} $af match]} {
+            set rd_cmd "$rd_cmd -f $af"
+        } else {
+            set rd_cmd "$rd_cmd $af"
+        }
+    }
+    echo "$rd_cmd\}"
+    eval "$rd_cmd\}"
+}
+#Procedure to print useful machine information
+#version 1.1 runtime improvements
+proc proc_machine_info {} {
+    #version 1.1
+    set naren_tmpdir /tmp
+    redirect -var naren_dsk { exec df -kh $naren_tmpdir }
+    set naren_ttmp [lindex [lindex [split $naren_dsk "\n"] 1] 1]
+    set naren_avail [lindex [lindex [split $naren_dsk "\n"] 1] 3]
+    set naren_pctav [lindex [lindex [split $naren_dsk "\n"] 1] 4]
+    set naren_pctav [string trim ${naren_pctav} "%"]
+
+    set FIL [open /proc/cpuinfo "r"] ; set cpu_info [read $FIL] ; close $FIL
+    regexp -line {model name\s+:\s+(.*)} $cpu_info match naren_model
+    regexp -line {cache size\s+:\s+(.*)} $cpu_info match naren_cache
+    regexp -line {cpu MHz\s+:\s+(.*)} $cpu_info match naren_mhz
+    set naren_cores [regexp -all "processor" $cpu_info]
+    set naren_sockets [lindex [lindex [lsort -index 3 -decreasing -real [regexp -inline -all -line {physical id\s+:\s+.*} $cpu_info]] 0] 3]
+
+    if {[string is double -strict $naren_mhz]} {
+      set naren_mhz "[format %.2f [expr {$naren_mhz/1000.0}]]Ghz"
+    } else {
+      set naren_mhz "${naren_mhz}Mhz"
+    }
+
+    #get uname -sr info
+    set FIL [open /proc/sys/kernel/ostype "r"] ; set os_info [read $FIL] ; close $FIL
+    set FIL [open /proc/sys/kernel/osrelease "r"] ; append os_info [read $FIL] ; close $FIL
+    set os_info [regsub -all {\n} $os_info { }]
+
+    #get free mem/swp of machine
+    set FIL [open /proc/meminfo "r"] ; set mem_info [read $FIL] ; close $FIL
+    regexp -line {MemTotal\s*:\s*(\d+)} $mem_info match memt
+    regexp -line {MemFree\s*:\s*(\d+)} $mem_info match memf
+    regexp -line {SwapTotal\s*:\s*(\d+)} $mem_info match swpt
+    regexp -line {SwapFree\s*:\s*(\d+)} $mem_info match swpf
+
+    set naren_mem  [expr {$memt/1048576}]
+    set naren_memf [expr {$memf/1048576}]
+
+    set naren_swp  [expr {$swpt/1048576}]
+    set naren_swpf [expr {$swpf/1048576}]
+    
+    if {![info exists ::env(USER)]} { setenv USER [exec whoami] }
+
+    echo "\n########################## MACHINE INFORMATION ##############################"
+    echo "User:       $::env(USER)"
+    echo "Host:       [info hostname]"
+    echo "Date:       [date]"
+    echo "OS:         $os_info"
+    echo "CPU:        Cores = $naren_cores : Sockets = $naren_sockets : Cache Size = $naren_cache : Freq = $naren_mhz : Model Name = $naren_model"
+    echo "Memory:     Ram:  [format %5s "${naren_mem}GB"]\t(Free [format %5s "${naren_memf}GB"])"
+    echo "\t    Swap: [format %5s "${naren_swp}GB"]\t(Free [format %5s "${naren_swpf}GB"])"
+    echo "\t    ${naren_tmpdir}: [format %5s "${naren_ttmp}B"]\t(Free [format %5s "${naren_avail}B"])"
+    echo "Dir:        [pwd]"
+    echo "Version:    $::sh_product_version"
+    if {${naren_pctav}>=90} { echo "WARNING: temp disk space (${naren_tmpdir}) is near FULL ${naren_pctav}% ..." }
+    echo "##################### END MACHINE INFORMATION ###############################\n"
+}
+proc FANIN {pin_path_name} {
+     if {[sizeof_collection [get_pins $pin_path_name -quiet]] == "1"} {
+         set s_pin  [get_pins   [all_connected [get_nets -of [get_pins $pin_path_name]] -leaf] -filter "direction==out" -quiet]
+         set s_port [get_ports  [all_connected [get_nets -of [get_pins $pin_path_name]] -leaf] -filter "direction==in" -quiet]
+         if {[sizeof_collection $s_port]} {
+             if {[sizeof_collection $s_port] > 1} {puts "Error,multiple driver port found: [get_object_name $s_port]"
+                } else {
+                  return [get_object_name $s_port];
+                  puts "[get_object_name $s_port]"
+                }
+            } elseif {[sizeof_collection $s_pin]} {
+              if {[sizeof_collection $s_pin] > 1} {puts "Error,multiple driver port found: [get_object_name $s_pin]"
+                } else {
+                  return [get_object_name $s_pin];
+                  puts   "[get_object_name $s_pin]"
+                }
+            } else {
+              puts "Error,can't find any driver pin or oprt"
+            }
+        } elseif {[sizeof_collection [get_ports $pin_path_name -quiet]] == "1"} {
+         set s_pin  [get_pins   [all_connected [get_nets -of [get_pins $pin_path_name]] -leaf] -filter "direction==out" -quiet]
+         set s_port [get_ports  [all_connected [get_nets -of [get_pins $pin_path_name]] -leaf] -filter "direction==in" -quiet]
+         if {[sizeof_collection $s_port]} {
+             if {[sizeof_collection $s_port] > 1} {puts "Error,multiple driver port found: [get_object_name $s_port]"
+                } else {
+                  return [get_object_name $s_port];
+                  puts "[get_object_name $s_port]"
+                }
+            } elseif {[sizeof_collection $s_pin]} {
+              if {[sizeof_collection $s_pin] > 1} {puts "Error,multiple driver port found: [get_object_name $s_pin]"
+                } else {
+                  return [get_object_name $s_pin];
+                  puts   "[get_object_name $s_pin]"
+                }
+            } else {
+              puts "Error,can't find any driver pin or oprt"
+            }
+        } else {
+          puts "Error, put in un-existed pin/port or more than one pin/port"
+        }
+}
+proc FANIN_Q {pin_path_name} {
+     if {[sizeof_collection [get_pins $pin_path_name -quiet]] == "1"} {
+         set s_pin  [get_pins   [all_connected [get_nets -of [get_pins $pin_path_name]] -leaf] -filter "direction==out" -quiet]
+         set s_port [get_ports  [all_connected [get_nets -of [get_pins $pin_path_name]] -leaf] -filter "direction==in" -quiet]
+         if {[sizeof_collection $s_port]} {
+             if {[sizeof_collection $s_port] > 1} {puts "Error,multiple driver port found: [get_object_name $s_port]"
+                } else {
+                  return [get_object_name $s_port];
+#                  puts "[get_object_name $s_port]"
+                }
+            } elseif {[sizeof_collection $s_pin]} {
+              if {[sizeof_collection $s_pin] > 1} {puts "Error,multiple driver port found: [get_object_name $s_pin]"
+                } else {
+                  return [get_object_name $s_pin];
+#                  puts   "[get_object_name $s_pin]"
+                }
+            } else {
+              puts "Error,can't find any driver pin or oprt"
+            }
+        } elseif {[sizeof_collection [get_ports $pin_path_name -quiet]] == "1"} {
+         set s_pin  [get_pins   [all_connected [get_nets -of [get_pins $pin_path_name]] -leaf] -filter "direction==out" -quiet]
+         set s_port [get_ports  [all_connected [get_nets -of [get_pins $pin_path_name]] -leaf] -filter "direction==in" -quiet]
+         if {[sizeof_collection $s_port]} {
+             if {[sizeof_collection $s_port] > 1} {puts "Error,multiple driver port found: [get_object_name $s_port]"
+                } else {
+                  return [get_object_name $s_port];
+#                  puts "[get_object_name $s_port]"
+                }
+            } elseif {[sizeof_collection $s_pin]} {
+              if {[sizeof_collection $s_pin] > 1} {puts "Error,multiple driver port found: [get_object_name $s_pin]"
+                } else {
+                  return [get_object_name $s_pin];
+#                  puts   "[get_object_name $s_pin]"
+                }
+            } else {
+              puts "Error,can't find any driver pin or oprt"
+            }
+        } else {
+          puts "Error, put in un-existed pin/port or more than one pin/port"
+        }
+}
+source -c -e -v ../../../common/config.tcl
+#========================================================================
+#   
+#   TCL Script
+#   
+#========================================================================
+#========================================================
+#   0. Global information setting
+#========================================================
+set save_data_version "pr_train"
+pr_train
+set save_data_time [clock format [clock seconds] -format {%m_%d_%H_%M}]
+05_08_18_23
+if {![info exist chip_process_node] || $chip_process_node == ""} {set chip_process_node opencell45}
+opencell45
+#========================================================
+#   1. Harden/IO/IP tree
+#========================================================
+#must use spcae instead of tab! In vim, you can input 
+#":%s=\t=    =g" to convert tab to space
+set harden_ip_tree {
+    Rocket {}
+}
+
+    Rocket {}
+
+#    soc_asic_top       {PLL IO }
+#    asic_top       {PLL IO }
+#for module which syn separated but not harden
+set not_harden_ip_tree {
+}
+
+
+#========================================================
+#   2. PATH setting
+#========================================================
+set RTL_PATH            /local/home/coguest5/vlsi_flow_RTLPT/flow/asic_data/benchmark
+/local/home/coguest5/vlsi_flow_RTLPT/flow/asic_data/benchmark
+set RTL_SEARCH_PATH    "\
+"
+set PR_PLACE_NET_PATH   "/local/home/coguest5/vlsi_flow_RTLPT/flow/pd_data/pnr/netlist"
+/local/home/coguest5/vlsi_flow_RTLPT/flow/pd_data/pnr/netlist
+set PR_PLACE_SPEF_PATH  "/local/home/coguest5/vlsi_flow_RTLPT/flow/pd_data/pnr/spef"
+/local/home/coguest5/vlsi_flow_RTLPT/flow/pd_data/pnr/spef
+# set PR_PLACE_SPEF_PATH  "/local/home/coguest5/vlsi_flow_RTLPT/flow/pd_data/starrc/spf"
+set PR_CTS_NET_PATH     "/local/home/coguest5/vlsi_flow_RTLPT/flow/pd_data/pnr/netlist"
+/local/home/coguest5/vlsi_flow_RTLPT/flow/pd_data/pnr/netlist
+set PR_CTS_SPEF_PATH    "/local/home/coguest5/vlsi_flow_RTLPT/flow/pd_data/pnr/spef"
+/local/home/coguest5/vlsi_flow_RTLPT/flow/pd_data/pnr/spef
+set MEM_LIB_PATH        /local/home/coguest5/vlsi_flow_RTLPT/flow/lib_data/nangate45
+/local/home/coguest5/vlsi_flow_RTLPT/flow/lib_data/nangate45
+set HARDEN_LIB_PATH        /local/home/coguest5/vlsi_flow_RTLPT/flow/lib_data/nangate45
+/local/home/coguest5/vlsi_flow_RTLPT/flow/lib_data/nangate45
+set     IPIO_LIB_PATH  ""
+# lappend IPIO_LIB_PATH  /eda/lib/smic/SMIC110/SP013D3WP_V1p7/syn
+# lappend IPIO_LIB_PATH  /eda/lib/smic/SMIC110/S013PLLFN_V1.5.2/Lib
+#========================================================
+#   3. Memory lib/db of each corner
+#========================================================
+# set LIB_MEM_MAP {
+#     MAX : S011HD.*X.*SS_1.08_125.*db 
+#     WCL : S011HD.*X.*SS_1.08_-40.*db 
+#     TYP : S011HD.*X.*TT_1.2_25.*db   
+#     MIN : S011HD.*X.*FF_1.32_-40.*db 
+#     ML  : S011HD.*X.*FF_1.32_125.*db 
+#     WCZ : S011HD.*X.*FF_1.32_0.*db 
+# }
+set LIB_MEM_MAP {
+}
+
+
+#========================================================
+#   4. IP/IO lib/db of each corner
+#========================================================
+# set LIB_IPIO_MAP(IO) {
+#     MAX :  SP013D3WP_V1p7_max.db
+#     WCL :  SP013D3WP_V1p7_max.db
+#     TYP :  SP013D3WP_V1p7_typ.db     
+#     MIN :  SP013D3WP_V1p7_low_temp.db 
+#     ML  :  SP013D3WP_V1p7_min.db 
+#     WCZ :  SP013D3WP_V1p7_max.db
+# }
+# set LIB_IPIO_MAP(PLL) {
+#     MAX :  S013PLLFN_v1.5.1_max_201303SP2.db 
+#     WCL :  S013PLLFN_v1.5.1_max_201303SP2.db 
+#     TYP :  S013PLLFN_v1.5.1_typ_201303SP2.db
+#     MIN :  S013PLLFN_v1.5.1_min_201303SP2.db
+#     WCL :  S013PLLFN_v1.5.1_max_201303SP2.db 
+#     ML  :  S013PLLFN_v1.5.1_min_201303SP2.db
+#     WCZ :  S013PLLFN_v1.5.1_max_201303SP2.db 
+# }
+source -c -e -v ../../../common/signoff_table.tcl
+#========================================================================
+#   
+#   TCL Script
+#   
+#========================================================================
+if {$chip_process_node == "smic14"} {
+    #the leftest rc is default; 
+    set pvt_rc_comb_table {
+        WCZ  :  rcworst  cworst   cworst_T  rcworst_T
+        MAX  :  rcworst  cworst   cworst_T  rcworst_T
+        WCL  :  rcworst  cworst   cworst_T  rcworst_T
+        TYP  :  typical
+        MIN  :  cbest    rcbest   cworst    rcworst
+        ML   :  cbest    rcbest   cworst    rcworst
+    }
+
+    set ocv_table {
+        WCZ|MAX|WCL .*worst_T {
+            cell_clock_late     :   2.75%   ;#+2.0%+0.75%(1/2 spacial ocv)
+            cell_clock_early    :   -7.05%  ;#-2.0% -3.7%(for voltage ocv)-0.6%(for temp ocv)-0.75%(1/2 spacial ocv)
+            cell_data_late      :   7.65%   ;#+6.9%+0.75%(1/2 spacial ocv)
+            cell_data_early     :   -7.65%  ;#-6.9%-0.75%(1/2 spacial ocv) as same as late
+            net_late            :   6%      ;#
+            net_early           :   -6%     ;#
+        }
+        WCZ|MAX|WCL .*worst {
+            cell_clock_late     :   3.95%   ;#+6.9% as same as tighten corner+0.75%(1/2 spacial ocv)
+            cell_clock_early    :   -11.55% ;#-3.2%-7%(for voltage ocv)-0.6%(for temp ocv)-0.75%(1/2 spacial ocv)
+            cell_data_late      :   7.65%   ;#+6.9% as same as tighten corner+0.75%(1/2 spacial ocv)
+            cell_data_early     :   -18.05% ;#-9.7%-7%(for voltage ocv)-0.6%(for temp ocv)-0.75%(1/2 spacial ocv)
+            net_late            :   8.5%    ;#
+            net_early           :   -8.5%   ;#
+        }
+        ML|MIN|MZ .* {
+            cell_clock_late     :   10.05%  ;#+3.7%+5.1%(for voltage ocv)+0.5%(for temp ocv)%+0.75%(1/2 spacial ocv)
+            cell_clock_early    :   -4.45%  ;#-3.7%-0.75%(1/2 spacial ocv)
+            cell_data_late      :   12.85%  ;#+12.1%+0.75%(1/2 spacial ocv)
+            cell_data_early     :   -12.85% ;#-12.1%-0.75%(1/2 spacial ocv)
+            net_late            :   8.5%    ;#
+            net_early           :   -8.5%   ;#
+        }
+        default default {
+            late                :   10%
+            early               :   -5%
+        }
+    }
+
+    set clk_uncertainty_table {
+        WCZ|MAX|WCL .*worst_T  {
+            setup     {
+                0~10000 : 0.101
+            }
+            hold      {
+                0~10000 : 0.101
+            }
+        }
+        WCZ|MAX|WCL .*worst    {
+            setup     {
+                0~10000 : 0.081
+            }
+            hold      {
+                0~10000 : 0.081
+            }
+        }
+        ML|MIN|MZ .* {
+            setup     {
+                0~10000 : 0.041
+            }
+            hold      {
+                0~10000 : 0.041
+            }
+        }
+        default default {
+            setup     {
+                0~10000 : 0.041
+            }
+            hold      {
+                0~10000 : 0.041
+            }
+        }
+    }
+
+    set max_trans_table {
+        default default  {
+            clock   : 8%
+            data    : 30%
+        }
+    }
+
+    set max_cap_table {
+        default default  {
+        }
+    }
+
+} elseif {$chip_process_node == "tsmc28"} {
+    #the leftest rc is default; 
+    set pvt_rc_comb_table {
+        WCZ  :  rcworst  cworst   cworst_T  rcworst_T
+        MAX  :  rcworst  cworst   cworst_T  rcworst_T
+        WCL  :  rcworst  cworst   cworst_T  rcworst_T
+        TYP  :  typical
+        MIN  :  cbest    rcbest   cworst    rcworst
+        ML   :  cbest    rcbest   cworst    rcworst
+    }
+
+    set ocv_table {
+        WCZ|MAX|WCL .*worst_T {
+            cell_clock_late     :   2.75%   ;#+2.0%+0.75%(1/2 spacial ocv)
+            cell_clock_early    :   -7.05%  ;#-2.0% -3.7%(for voltage ocv)-0.6%(for temp ocv)-0.75%(1/2 spacial ocv)
+            cell_data_late      :   7.65%   ;#+6.9%+0.75%(1/2 spacial ocv)
+            cell_data_early     :   -7.65%  ;#-6.9%-0.75%(1/2 spacial ocv) as same as late
+            net_late            :   6%      ;#
+            net_early           :   -6%     ;#
+        }
+        WCZ|MAX|WCL .*worst {
+            cell_clock_late     :   3.95%   ;#+6.9% as same as tighten corner+0.75%(1/2 spacial ocv)
+            cell_clock_early    :   -11.55% ;#-3.2%-7%(for voltage ocv)-0.6%(for temp ocv)-0.75%(1/2 spacial ocv)
+            cell_data_late      :   7.65%   ;#+6.9% as same as tighten corner+0.75%(1/2 spacial ocv)
+            cell_data_early     :   -18.05% ;#-9.7%-7%(for voltage ocv)-0.6%(for temp ocv)-0.75%(1/2 spacial ocv)
+            net_late            :   8.5%    ;#
+            net_early           :   -8.5%   ;#
+        }
+        ML|MIN .* {
+            cell_clock_late     :   10.05%  ;#+3.7%+5.1%(for voltage ocv)+0.5%(for temp ocv)%+0.75%(1/2 spacial ocv)
+            cell_clock_early    :   -4.45%  ;#-3.7%-0.75%(1/2 spacial ocv)
+            cell_data_late      :   12.85%  ;#+12.1%+0.75%(1/2 spacial ocv)
+            cell_data_early     :   -12.85% ;#-12.1%-0.75%(1/2 spacial ocv)
+            net_late            :   8.5%    ;#
+            net_early           :   -8.5%   ;#
+        }
+        default default {
+            late                :   10%
+            early               :   -5%
+        }
+    }
+
+    set clk_uncertainty_table {
+        WCZ|MAX|WCL .*worst_T  {
+            setup     {
+                0~10000 : 0.101
+            }
+            hold      {
+                0~10000 : 0.070
+            }
+        }
+        WCZ|MAX|WCL .*worst    {
+            setup     {
+                0~10000 : 0.081
+            }
+            hold      {
+                0~10000 : 0.051
+            }
+        }
+        ML|MIN .* {
+            setup     {
+                0~10000 : 0.041
+            }
+            hold      {
+                0~10000 : 0.040
+            }
+        }
+        default default {
+            setup     {
+                0~10000 : 0.041
+            }
+            hold      {
+                0~10000 : 0.040
+            }
+        }
+    }
+
+    set max_trans_table {
+        default default  {
+            clock   : 8%
+            data    : 30%
+        }
+    }
+
+    set max_cap_table {
+        default default  {
+        }
+    }
+
+} elseif {$chip_process_node == "smic110"} {
+    #the leftest rc is default; 
+    set pvt_rc_comb_table {
+        MAX  :  cmax
+        MIN  :  cmin
+    }
+
+    set ocv_table {
+        MAX cmax {
+            cell_clock_late     :   5%   
+            cell_clock_early    :   -5%  
+            cell_data_late      :   0%   
+            cell_data_early     :   0%   
+            net_clock_late      :   5%   
+            net_clock_early     :   -5%  
+            net_data_late       :   0%   
+            net_data_early      :   0%   
+        }
+        MIN cmin {
+            cell_clock_late     :   5%   
+            cell_clock_early    :   -5%  
+            cell_data_late      :   0%   
+            cell_data_early     :   0%   
+            net_clock_late      :   5%   
+            net_clock_early     :   -5%  
+            net_data_late       :   0%   
+            net_data_early      :   0%   
+        }
+        default default {
+            late                :   0%
+            early               :   0%
+        }
+    }
+
+    set clk_uncertainty_table {
+        MAX cmax  {
+            setup     {
+                0~10000 : 0.1
+            }
+            hold      {
+                0~10000 : 0.1
+            }
+        }
+        MIN cmin {
+            setup     {
+                0~10000 : 0.040
+            }
+            hold      {
+                0~10000 : 0.040
+            }
+        }
+        default default {
+            setup     {
+                0~10000 : 0.040
+            }
+            hold      {
+                0~10000 : 0.040
+            }
+        }
+    }
+
+    set max_trans_table {
+        default default  {
+            clock   : 8%
+            data    : 30%
+        }
+    }
+
+    set max_cap_table {
+        default default  {
+        }
+    }
+} elseif {$chip_process_node == "opencell45"} {
+    #the leftest rc is default; 
+    set pvt_rc_comb_table {
+        MAX  :  cmax
+        MIN  :  cmin
+    }
+
+    set ocv_table {
+        MAX cmax {
+            cell_clock_late     :   5%   
+            cell_clock_early    :   -5%  
+            cell_data_late      :   0%   
+            cell_data_early     :   0%   
+            net_clock_late      :   5%   
+            net_clock_early     :   -5%  
+            net_data_late       :   0%   
+            net_data_early      :   0%   
+        }
+        MIN cmin {
+            cell_clock_late     :   5%   
+            cell_clock_early    :   -5%  
+            cell_data_late      :   0%   
+            cell_data_early     :   0%   
+            net_clock_late      :   5%   
+            net_clock_early     :   -5%  
+            net_data_late       :   0%   
+            net_data_early      :   0%   
+        }
+        default default {
+            late                :   0%
+            early               :   0%
+        }
+    }
+
+    set clk_uncertainty_table {
+        MAX cmax  {
+            setup     {
+                0~10000 : 0.1
+            }
+            hold      {
+                0~10000 : 0.1
+            }
+        }
+        MIN cmin {
+            setup     {
+                0~10000 : 0.15
+            }
+            hold      {
+                0~10000 : 0.15
+            }
+        }
+        default default {
+            setup     {
+                0~10000 : 0.15
+            }
+            hold      {
+                0~10000 : 0.15
+            }
+        }
+    }
+
+    set max_trans_table {
+        default default  {
+            clock   : 8%
+            data    : 30%
+        }
+    }
+
+    set max_cap_table {
+        default default  {
+        }
+    }
+} elseif {$chip_process_node == "nangate15"} {
+     #the leftest rc is default; 
+    set pvt_rc_comb_table {
+        MAX  :  cmax
+        MIN  :  cmin
+    }
+
+    set ocv_table {
+        MAX cmax {
+            cell_clock_late     :   5%   
+            cell_clock_early    :   -5%  
+            cell_data_late      :   0%   
+            cell_data_early     :   0%   
+            net_clock_late      :   5%   
+            net_clock_early     :   -5%  
+            net_data_late       :   0%   
+            net_data_early      :   0%   
+        }
+        MIN cmin {
+            cell_clock_late     :   5%   
+            cell_clock_early    :   -5%  
+            cell_data_late      :   0%   
+            cell_data_early     :   0%   
+            net_clock_late      :   5%   
+            net_clock_early     :   -5%  
+            net_data_late       :   0%   
+            net_data_early      :   0%   
+        }
+        default default {
+            late                :   0%
+            early               :   0%
+        }
+    }
+
+    set clk_uncertainty_table {
+        MAX cmax  {
+            setup     {
+                0~10000 : 0.1
+            }
+            hold      {
+                0~10000 : 0.1
+            }
+        }
+        MIN cmin {
+            setup     {
+                0~10000 : 0.040
+            }
+            hold      {
+                0~10000 : 0.040
+            }
+        }
+        default default {
+            setup     {
+                0~10000 : 0.040
+            }
+            hold      {
+                0~10000 : 0.040
+            }
+        }
+    }
+
+    set max_trans_table {
+        default default  {
+            clock   : 8%
+            data    : 30%
+        }
+    }
+
+    set max_cap_table {
+        default default  {
+        }
+    }
+}
+
+        default default  {
+        }
+    
+
+        default default  {
+        }
+    
+
+        default default  {
+        }
+    
+proc_machine_info
+
+########################## MACHINE INFORMATION ##############################
+User:       coguest5
+Host:       acf3030.ee.ust.hk
+Date:       Thu May  8 18:23:01 2025
+OS:         Linux 3.10.0-1160.66.1.el7.x86_64 
+CPU:        Cores = 64 : Sockets = 126 : Cache Size = 43008 KB : Freq = 2.59Ghz : Model Name = Intel(R) Xeon(R) Gold 6348 CPU @ 2.60GHz
+Memory:     Ram:  510GB	(Free   3GB)
+	    Swap:   3GB	(Free   2GB)
+	    /tmp:  50GB	(Free  19GB)
+Dir:        /local/home/coguest5/vlsi_flow_RTLPT/flow/bes_data/sta/work/Rocket_TinyRocket_init_TYP_SAIF_SDF
+Version:    T-2022.03-SP3
+##################### END MACHINE INFORMATION ###############################
+
+#========================================================
+#   Default setting 
+#========================================================
+if {![info exist auto_io_const  ]} {set auto_io_const  YES }
+YES
+if {![info exist cpu_core_num   ]} {set cpu_core_num   8   }
+8
+if {[regexp {VCD|SAIF} $power_analysis]} {
+    eval $pwr_setting_txt
+}
+Error: can't read "pwr_setting_txt": no such variable
+	Use error_info for more info. (CMD-013)
+#========================================================
+#   Basic path setting of syn flow
+#========================================================
+if {$user_parameters != ""} {
+    set top_extended ${top}_$user_parameters
+} else {
+    set top_extended ${top}
+}
+Rocket_TinyRocket
+if {$phase == "SYN"} {
+    set netlist_dir ../../../syn/netlist
+} else {
+    set netlist_dir $PR_PLACE_NET_PATH
+    set spef_dir    $PR_PLACE_SPEF_PATH
+} 
+/local/home/coguest5/vlsi_flow_RTLPT/flow/pd_data/pnr/spef
+regexp {\w+\s+\d+\s+\d+} [date] log_date
+1
+set log_date [regsub -all {\s+} $log_date _]
+May_8_18
+set pt_log_dir ../../log
+../../log
+set pt_sdc_dir ../../sdc
+../../sdc
+set pt_ses_dir ../../session
+../../session
+set pt_sdf_dir ../../sdf/${log_name}_${log_date}
+../../sdf/Rocket_TinyRocket_init_TYP_SAIF_SDF_May_8_18
+if {($phase == "CTS"||$phase == "ROUTE") && $flatten == "YES"} {
+    set pt_rpt_dir ../../rpt/${log_name}_${log_date}
+    sh ln -snf ${log_name}_${log_date} ../../rpt/${log_name}
+} else {
+    set pt_rpt_dir ../../rpt/${log_name}
+}
+../../rpt/Rocket_TinyRocket_init_TYP_SAIF_SDF
+if {![file exists $pt_rpt_dir]} {
+    file mkdir $pt_rpt_dir
+} else {
+    foreach afile [glob -nocomplain $pt_rpt_dir/*] {
+        file delete $afile
+    }
+}
+if {[regexp {YES} $gen_sdf]} {
+    if {![file exists $pt_sdf_dir]} {
+        file mkdir $pt_sdf_dir
+    } else {
+        foreach afile [glob -nocomplain $pt_sdf_dir/*] {
+            file delete $afile
+        }
+    }
+}
+#========================================================
+#    Setting  variable                                         
+#========================================================
+set_host_options -max_cores $cpu_core_num
+Information: The max_cores limit for the local (current) process has been modified by 4 to 8. (CMCR-103)
+1
+suppress_message {SDF-026 PTE-099 PTE-067 PSW-191 UITE-316 PSW-211 PWR-020}
+set report_default_significant_digits 3 ;
+3
+set sh_source_uses_search_path true ;
+true
+set timing_report_unconstrained_paths true
+true
+set timing_remove_clock_reconvergence_pessimism true
+true
+#set timing_early_launch_at_borrowing_latches false
+#set timing_save_pin_arrival_and_slack true
+set timing_crpr_threshold_ps 5
+5
+#set access_internal_pins true
+set timing_enable_max_capacitance_set_case_analysis true
+true
+set read_parasitics_load_locations true
+true
+set link_create_black_boxes false
+false
+set si_enable_analysis true
+true
+set si_xtalk_double_switching_mode full_design
+full_design
+#set si_xtalk_composite_aggr_noise_peak_ratio 0.05
+#set si_xtalk_composite_aggr_quantile_high_pct 95.45
+set si_noise_composite_aggr_mode statistical
+statistical
+set pba_enable_path_based_physical_exclusivity true
+true
+set si_xtalk_delay_analysis_mode all_path_edges
+all_path_edges
+set delay_calc_waveform_analysis_mode full_design
+Information: Checked out license 'PrimeTime-SI' (PT-019)
+full_design
+set delay_calc_waveform_analysis_constraint_arcs_compatibility false
+false
+set parasitics_log_file $pt_rpt_dir/${top}.annotated.rpt
+../../rpt/Rocket_TinyRocket_init_TYP_SAIF_SDF/Rocket.annotated.rpt
+# #-----------------------
+# #define clock uncertainty
+# #-----------------------
+# if {![info exist setup_clk_unc      ]} {set setup_clk_unc  0.15}
+# if {![info exist hold_clk_unc       ]} {set hold_clk_unc   0.1 }
+# set_clock_uncertainty -setup $setup_clk_unc [get_clocks *]
+# set_clock_uncertainty -hold  $hold_clk_unc  [get_clocks *]
+#========================================================
+#   Lib setup
+#========================================================
+source -c -e -v ../../../common/lib_setup.tcl
+#========================================================================
+#   
+#   TCL Script
+#   
+#========================================================================
+#========================================================
+#   1. Std cell lib setup
+#========================================================
+if {$tool == "DC" || $tool == "PT"} {
+    source -c -v -e ../../../common/std_cell_setup.tcl
+} elseif {$tool == "FM"} {
+    source -c -v -e ../../../common/std_cell_setup.tcl
+}
+if {$chip_process_node == "smic14"} {
+    set std_map {
+        corner_map {
+            WCZ     ssg_v0p72_0c
+            MAX     ssg_v0p72_125c
+            WCL     ssg_v0p72_m40c
+            TYP     tt_v0p8_85c
+            MIN     ffg_v0p88_-40c
+            ML      ffg_v0p88_125c
+            MZ      ffg_v0p88_0c
+            WCZ_HV  ssg_v0p81_0c
+            MAX_HV  ssg_v0p81_125c
+            WCL_HV  ssg_v0p81_m40c
+            TYP_HV  tt_v0p9_85c
+            MIN_HV  ffg_v0p99_-40c
+            ML_HV   ffg_v0p99_125c
+            MZ_HV   ffg_v0p99_0c
+        }
+        track_map {
+            7P5T    "7p5t"
+            9T      "9t"
+        }
+        vt_map {
+            SVT     "r"
+            LVT     "l"
+            ULVT    "ul"
+        }
+        cl_map {
+            16 "16"
+            20 "20"
+            24 "24"
+        }
+        disable_comb {
+            #track_map:9T+vt_map:HVT+cl_map:30
+        }
+        std_lib_form {
+            scc14nsfp_96sdb_${track_map}c${cl_map}_${vt_map}vt_${corner_map}_ccs.db            SYN_YES
+            scc14nsfp_96sdb_${track_map}c${cl_map}_mbff_${vt_map}vt_${corner_map}_ccs.db       SYN_YES
+            scc14nsfp_96sdb_${track_map}c${cl_map}_eco_${vt_map}vt_${corner_map}_ccs.db        SYN_NO
+            scc14nsfp_96sdb_${track_map}c${cl_map}_lvlhl_${vt_map}vt_${corner_map}_ccs.db      SYN_NO
+            scc14nsfp_96sdb_${track_map}c${cl_map}_lvlhlo_${vt_map}vt_${corner_map}_ccs.db     SYN_NO
+            scc14nsfp_96sdb_${track_map}c${cl_map}_pmk_${vt_map}vt_${corner_map}_ccs.db        SYN_NO
+            scc14nsfp_90sdb_${track_map}c${cl_map}_${vt_map}vt_${corner_map}_ccs.db            SYN_YES
+            scc14nsfp_90sdb_${track_map}c${cl_map}_mbff_${vt_map}vt_${corner_map}_ccs.db       SYN_YES
+            scc14nsfp_90sdb_${track_map}c${cl_map}_eco_${vt_map}vt_${corner_map}_ccs.db        SYN_NO
+            scc14nsfp_90sdb_${track_map}c${cl_map}_lvlhl_${vt_map}vt_${corner_map}_ccs.db      SYN_NO
+            scc14nsfp_90sdb_${track_map}c${cl_map}_lvlhlo_${vt_map}vt_${corner_map}_ccs.db     SYN_NO
+            scc14nsfp_90sdb_${track_map}c${cl_map}_pmk_${vt_map}vt_${corner_map}_ccs.db        SYN_NO
+        }
+        std_cell_form {
+            \w+_9\dS${track_map}${cl_map}${vt_map}$
+        }
+    }
+
+    set dont_use_cell_list {
+        *DEL* 
+        *SED*
+        *SND*
+	    *AOI222* 
+	    *AOI33* 
+	    *OAI222* 
+	    *OAI33* 
+        *CLK* 
+        *NOR4* 
+        *V0* 
+        *V24* 
+        *V20* 
+	    *DCAP* 
+    }
+
+    set     STD_LIB_PATH ""
+    #---------------
+    #   7P5T
+    #---------------
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC16_LVT_V1P1A/Liberty/0.8v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC16_LVT_V1P1A/Liberty/0.9v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC20_LVT_V1P1A/Liberty/0.8v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC20_LVT_V1P1A/Liberty/0.9v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC24_LVT_V1P1A/Liberty/0.8v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC24_LVT_V1P1A/Liberty/0.9v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC16_RVT_V1P1A/Liberty/0.8v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC16_RVT_V1P1A/Liberty/0.9v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC20_RVT_V1P1A/Liberty/0.8v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC20_RVT_V1P1A/Liberty/0.9v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC24_RVT_V1P1A/Liberty/0.8v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC24_RVT_V1P1A/Liberty/0.9v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC16_ULVT_V1P1A/Liberty/0.8v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC16_ULVT_V1P1A/Liberty/0.9v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC20_ULVT_V1P1A/Liberty/0.8v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC20_ULVT_V1P1A/Liberty/0.9v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC24_ULVT_V1P1A/Liberty/0.8v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC24_ULVT_V1P1A/Liberty/0.9v
+
+    #multibit
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC16C20C24_MBFF_V1P1A/Liberty/0.8v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC16C20C24_MBFF_V1P1A/Liberty/0.9v
+
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC16_ECO_LVT_V1P1A/Liberty/0.8v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC16_ECO_LVT_V1P1A/Liberty/0.9v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC16_ECO_RVT_V1P1A/Liberty/0.8v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC16_ECO_RVT_V1P1A/Liberty/0.9v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC16_ECO_ULVT_V1P1A/Liberty/0.8v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC16_ECO_ULVT_V1P1A/Liberty/0.9v
+
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC16_PMK_LVT_V1P1A/Liberty/0.8v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC16_PMK_LVT_V1P1A/Liberty/0.9v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC16_PMK_RVT_V1P1A/Liberty/0.8v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC16_PMK_RVT_V1P1A/Liberty/0.9v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC16_PMK_ULVT_V1P1A/Liberty/0.8v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC16_PMK_ULVT_V1P1A/Liberty/0.9v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC20_PMK_LVT_V1P1A/Liberty/0.8v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC20_PMK_LVT_V1P1A/Liberty/0.9v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC20_PMK_RVT_v1p1/Liberty/0.8v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC20_PMK_RVT_v1p1/Liberty/0.9v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC20_PMK_ULVT_V1P1A/Liberty/0.8v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC20_PMK_ULVT_V1P1A/Liberty/0.9v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC24_PMK_LVT_V1P1A/Liberty/0.8v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC24_PMK_LVT_V1P1A/Liberty/0.9v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC24_PMK_RVT_V1P1A/Liberty/0.8v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC24_PMK_RVT_V1P1A/Liberty/0.9v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC24_PMK_ULVT_V1P1A/Liberty/0.8v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_96SDB_7P5TC24_PMK_ULVT_V1P1A/Liberty/0.9v
+
+    #---------------
+    #   9T
+    #---------------
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_90SDB_9TC16_LVT_V1P1A/Liberty/0.8v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_90SDB_9TC16_LVT_V1P1A/Liberty/0.9v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_90SDB_9TC20_LVT_V1P1A/Liberty/0.8v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_90SDB_9TC20_LVT_V1P1A/Liberty/0.9v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_90SDB_9TC16_RVT_V1P1A/Liberty/0.8v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_90SDB_9TC16_RVT_V1P1A/Liberty/0.9v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_90SDB_9TC20_RVT_V1P1A/Liberty/0.8v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_90SDB_9TC20_RVT_V1P1A/Liberty/0.9v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_90SDB_9TC16_ULVT_V1P1A/Liberty/0.8v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_90SDB_9TC16_ULVT_V1P1A/Liberty/0.9v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_90SDB_9TC20_ULVT_V1P1A/Liberty/0.8v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_90SDB_9TC20_ULVT_V1P1A/Liberty/0.9v
+
+    #multibit
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_90SDB_9TC16C20_MBFF_V1P1A/Liberty/0.8v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_90SDB_9TC16C20_MBFF_V1P1A/Liberty/0.9v
+
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_90SDB_9TC16_ECO_LVT_V1P1A/Liberty/0.8v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_90SDB_9TC16_ECO_LVT_V1P1A/Liberty/0.9v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_90SDB_9TC16_ECO_RVT_V1P1A/Liberty/0.8v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_90SDB_9TC16_ECO_RVT_V1P1A/Liberty/0.9v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_90SDB_9TC16_ECO_ULVT_V1P1A/Liberty/0.8v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_90SDB_9TC16_ECO_ULVT_V1P1A/Liberty/0.9v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_90SDB_9TC16_PMK_LVT_V1P1A/Liberty/0.8v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_90SDB_9TC16_PMK_LVT_V1P1A/Liberty/0.9v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_90SDB_9TC16_PMK_RVT_V1P1A/Liberty/0.8v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_90SDB_9TC16_PMK_RVT_V1P1A/Liberty/0.9v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_90SDB_9TC16_PMK_ULVT_V1P1A/Liberty/0.8v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_90SDB_9TC16_PMK_ULVT_V1P1A/Liberty/0.9v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_90SDB_9TC20_PMK_LVT_V1P1A/Liberty/0.8v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_90SDB_9TC20_PMK_LVT_V1P1A/Liberty/0.9v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_90SDB_9TC20_PMK_RVT_V1P1A/Liberty/0.8v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_90SDB_9TC20_PMK_RVT_V1P1A/Liberty/0.9v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_90SDB_9TC20_PMK_ULVT_V1P1A/Liberty/0.8v
+    lappend STD_LIB_PATH /eda/lib/smic/smic14/std/v1p1a/SCC14NSFP_90SDB_9TC20_PMK_ULVT_V1P1A/Liberty/0.9v
+
+} elseif {$chip_process_node == "tsmc28"} {
+    set std_map {
+        corner_map {
+            WCZ     ssg0p81v0c
+            MAX     ssg0p81v125c
+            WCL     ssg0p81vm40c
+            TYP     tt0p9v85c
+            MIN     ffg0p99vm40c
+            ML      ffg0p99v125c
+            WCZ_HV  ssg0p9v0c
+            MAX_HV  ssg0p9v125c
+            WCL_HV  ssg0p9vm40c
+            TYP_HV  tt1p0v85c
+            MIN_HV  ffg1p1vm40c
+            ML_HV   ffg1p1v125c
+        }
+        track_map {
+            9T  ""
+        }
+        vt_map {
+            HVT  hvt
+            SVT  ""
+            LVT  lvt
+            ULVT ulvt
+        }
+        cl_map {
+            40 40
+            35 35
+            30 30
+        }
+        disable_comb {
+            #track_map:9T+vt_map:HVT+cl_map:30
+        }
+        std_lib_form {
+            tcbn28hpcplusbwp${cl_map}p140${vt_map}${corner_map}_ccs.db      SYN_YES
+            tcbn28hpcplusbwp${cl_map}p140mb${vt_map}${corner_map}_ccs.db    SYN_YES
+            tcbn28hpcplusbwp${cl_map}p140cg${vt_map}${corner_map}_ccs.db    SYN_NO
+            tcbn28hpcplusbwp${cl_map}p140opp${vt_map}${corner_map}_ccs.db   SYN_YES
+        }
+        std_cell_form {
+            \w+${cl_map}P140\w*${vt_map}$
+        }
+    }
+
+    set dont_use_cell_list {
+        *DEL* 
+        *ED* 
+        *SED* 
+        *SND* 
+	    *AOI222* 
+	    *AOI33* 
+	    *OAI222* 
+	    *OAI33* 
+        *CK* 
+        *NOR4* 
+        *D0* 
+        *D24* 
+        *D20* 
+	    *DCAP* 
+	    *FILL* 
+    }
+
+    set     STD_LIB_PATH ""
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp30p140_180a
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp30p140uhvt_180b
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp30p140hvt_180a
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp30p140lvt_180a
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp30p140ulvt_180a
+
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp35p140_180a
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp35p140uhvt_180b
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp35p140hvt_180a
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp35p140lvt_180a
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp35p140ulvt_180a
+
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp40p140_180a
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp40p140ehvt_170a
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp40p140uhvt_180b
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp40p140hvt_180a
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp40p140lvt_180a
+
+    #always-on and retention flip-flops
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp30p140cg_150a
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp35p140cghvt_150a
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp35p140cg_150a
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp40p140cgehvt_170a
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp40p140cguhvt_170a
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp40p140cghvt_150a
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp40p140cg_150a
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp40p140cgcwhvt_130a
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp40p140cgcw_130a
+
+    #multibit
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp30p140mb_170a
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp30p140mblvt_170a
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp35p140mb_170a
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp35p140mbhvt_170a
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp35p140mblvt_170a
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp40p140mbhvt_170c
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp40p140mb_170c
+
+    #opp
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp30p140opp_110c
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp30p140opphvt_110c
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp30p140opplvt_110c
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp30p140oppuhvt_150a
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp30p140oppulvt_150a
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp35p140opp_110c
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp35p140opphvt_110c
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp35p140opplvt_110c
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp35p140oppuhvt_150a
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp35p140oppulvt_150a
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp40p140opp_110c
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp40p140oppehvt_170a
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp40p140opphvt_110c
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp40p140opplvt_110c
+    lappend STD_LIB_PATH /eda/lib/tsmc/tsmc28nmhpcplus/TSMCHOME/digital/Front_End/timing_power_noise/CCS/tcbn28hpcplusbwp40p140oppuhvt_150a
+
+
+} elseif {$chip_process_node == "smic110"} {
+    set std_map {
+        corner_map {
+            WCZ     ss_v1p08_0c
+            MAX     ss_v1p08_125c
+            WCL     ss_v1p08_-40c
+            TYP     tt_v1p2_25c
+            MIN     ff_v1p32_0c
+            ML      ff_v1p32_125c
+        }
+        track_map {
+            8T  hd
+            6T  uhd
+        }
+        vt_map {
+            HVT hvt
+            SVT rvt
+            LVT lvt
+        }
+        cl_map {
+            40  ""
+        }
+        disable_comb {
+            #track_map:6T+vt_map:LVT+cl_map:none
+        }
+        std_lib_form {
+            scc011ums_${track_map}_${vt_map}_${corner_map}_ccs.db   SYN_YES
+        }
+        std_cell_form {
+            ${vt_map}_\w+${track_map}\w+
+        }
+    }
+
+    set dont_use_cell_list {
+        *V0* 
+        *V24* 
+        *V20* 
+	    *222* 
+	    *33* 
+	    *32* 
+        *DEL*
+	    *F_DIO*
+	    *PULL*
+	    *TBUF*
+    }
+    set     STD_LIB_PATH ""
+    lappend STD_LIB_PATH /eda/lib/smic/SMIC110/SCC011UMS_HD_HVT_V0.1a/SCC011UMS_HD_HVT_V0p1a/liberty/1.2v
+    lappend STD_LIB_PATH /eda/lib/smic/SMIC110/SCC011UMS_HD_LVT_V0.1a/SCC011UMS_HD_LVT_V0p1a/liberty/1.2v
+    lappend STD_LIB_PATH /eda/lib/smic/SMIC110/SCC011UMS_HD_RVT_V0.1a/SCC011UMS_HD_RVT_V0p1a/liberty/1.2v
+    lappend STD_LIB_PATH /eda/lib/smic/SMIC110/SCC011UMS_UHD_HVT_V1p0/liberty/1.2v
+    lappend STD_LIB_PATH /eda/lib/smic/SMIC110/SCC011UMS_UHD_LVT_V1p0/liberty/1.2v
+    lappend STD_LIB_PATH /eda/lib/smic/SMIC110/SCC011UMS_UHD_RVT_V1p0/liberty/1.2v
+
+} elseif {$chip_process_node == "opencell45"} {
+    set std_map {
+        corner_map {
+            MAX     slow
+            TYP     typical
+            MIN     fast
+        }
+        track_map {
+            8T  hd
+        }
+        vt_map {
+            SVT rvt
+        }
+        cl_map {
+            40  ""
+        }
+        disable_comb {
+        }
+        std_lib_form {
+            NangateOpenCellLibrary_${corner_map}.db     SYN_YES
+        }
+        std_cell_form {
+        }
+    }
+
+    set dont_use_cell_list {
+    }
+    set     STD_LIB_PATH ""
+    lappend STD_LIB_PATH /local/home/coguest5/vlsi_flow_RTLPT/flow/lib_data/nangate45
+} elseif {$chip_process_node == "nangate15"} {
+    set std_map {
+        corner_map {
+            MAX     slow
+            WCL     worst_low
+            TYP     typical
+            MIN     fast
+            ML      low_temp
+        }
+        track_map {
+            8T  hd
+        }
+        vt_map {
+            SVT rvt
+        }
+        cl_map {
+            40  ""
+        }
+        disable_comb {
+        }
+        std_lib_form {
+            NanGate_15nm_OCL_${corner_map}_conditional_ccs.db     SYN_YES
+        }
+        std_cell_form {
+        }
+    }
+
+    set dont_use_cell_list {
+    }
+    set     STD_LIB_PATH ""
+    lappend STD_LIB_PATH /home/wenjifang/lib/NanGate_15nm_OCL_v0.1_2014_06_Apache.A/front_end/timing_power_noise/CCS/db
+}
+/local/home/coguest5/vlsi_flow_RTLPT/flow/lib_data/nangate45
+set std_map [regsub -all {;?\s*#[^\n]*} $std_map ""]
+
+        corner_map {
+            MAX     slow
+            TYP     typical
+            MIN     fast
+        }
+        track_map {
+            8T  hd
+        }
+        vt_map {
+            SVT rvt
+        }
+        cl_map {
+            40  ""
+        }
+        disable_comb {
+        }
+        std_lib_form {
+            NangateOpenCellLibrary_${corner_map}.db     SYN_YES
+        }
+        std_cell_form {
+        }
+    
+foreach {amap_type amap_table} $std_map {
+    if {[regexp {corner_map|track_map|vt_map|cl_map} $amap_type match ]} {
+        foreach {abb full} $amap_table {
+            set ${amap_type}($abb) $full
+        } 
+    } elseif {[regexp {disable_comb|std_lib_form|std_cell_form} $amap_type match ]} {
+        set $amap_type $amap_table
+    }
+}
+if {$tool == "DC"} {
+    set target_library ""
+    foreach avt [array names vt_map] {
+        foreach acl [array names cl_map] {
+            foreach avc [split $voltage_channel +] {
+                if {[regexp "${avt}${acl}" $avc match]} {
+                    foreach {aform dis_flag} $std_lib_form {
+                        if {$dis_flag == "SYN_YES"} {
+                            set name_tmp [regsub {\${vt_map}}     $aform    "$vt_map($avt)"         ]
+                            set name_tmp [regsub {\${cl_map}}     $name_tmp "$cl_map($acl)"         ]
+                            set name_tmp [regsub {\${corner_map}} $name_tmp "$corner_map($corner)"  ]
+                            set name_tmp [regsub {\${track_map}}  $name_tmp "$track_map($track)"    ]
+                            echo target_lib_name $name_tmp
+                            foreach apath $STD_LIB_PATH {
+                                if {[glob -nocomplain $apath/$name_tmp] != ""} {
+                                    lappend target_library $name_tmp
+                                    lappend multi_vth_group_lib($avt$acl) $name_tmp
+                                    if {[regexp {:([\d.]+)} $avc match vt_ration]} {
+                                        set multi_vth_group_ratio($avt$acl) [expr 100.0 * $vt_ration]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+} elseif {$tool == "FM"} {
+    set track           [lindex [array names track_map] 0]
+    set voltage_channel [lindex [array names vt_map] 0][lindex [array names cl_map] 0]
+}
+set LIB(STD) ""
+foreach atr [array names track_map] {
+    foreach avt [array names vt_map] {
+        foreach acl [array names cl_map] {
+            foreach {aform dis_flag} $std_lib_form {
+                set name_tmp [regsub {\${track_map}}  $aform    "$track_map($atr)"      ]
+                set name_tmp [regsub {\${vt_map}}     $name_tmp "$vt_map($avt)"         ]
+                set name_tmp [regsub {\${cl_map}}     $name_tmp "$cl_map($acl)"         ]
+                set name_tmp [regsub {\${corner_map}} $name_tmp "$corner_map($corner)"  ]
+                foreach apath $STD_LIB_PATH {
+                    if {[glob -nocomplain $apath/$name_tmp] != ""} {
+                        lappend LIB(STD) $name_tmp
+                        if {$tool == "PT"} {
+                            lappend multi_vth_group_lib($avt$acl) $name_tmp
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+if {$tool == "DC"} {
+    set LIB(STD) $target_library
+}
+foreach adis $disable_comb {
+    regexp {track_map:(\w+)} $adis match track_tmp
+    regexp {vt_map:(\w+)}    $adis match vt_tmp
+    regexp {cl_map:(\w+)}    $adis match cl_tmp
+    foreach {aform dis_flag} $std_lib_form {
+        set name_tmp [regsub {\${track_map}}  $aform    "$track_map($track_tmp)"]
+        set name_tmp [regsub {\${vt_map}}     $name_tmp "$vt_map($vt_tmp)"      ]
+        set name_tmp [regsub {\${cl_map}}     $name_tmp "$cl_map($cl_tmp)"      ]
+        set name_tmp [regsub {\${corner_map}} $name_tmp "*"                     ]
+        set LIB(STD) [lminus $LIB(STD) $name_tmp]
+    }
+}
+set LIB(STD) [lsort -u $LIB(STD)]
+NangateOpenCellLibrary_typical.db
+NangateOpenCellLibrary_typical.db
+NangateOpenCellLibrary_typical.db
+#========================================================
+#   2. Memory lib setup
+#========================================================
+set LIB(MEM) ""
+foreach aline [split $LIB_MEM_MAP \n] {
+    if {[regexp "$corner\\s*:\\s*(\\S+.+)" $aline match libs_tmp ]} {
+        foreach lib_pat $libs_tmp {
+            foreach af [glob $MEM_LIB_PATH/*] {
+                if {[regexp "$lib_pat" $af match]} {
+                    lappend LIB(MEM) $af
+                }
+            }
+        }
+    }
+}
+set LIB(MEM) [lsort -u $LIB(MEM)]
+#========================================================
+#   3. Harden lib setup
+#========================================================
+set ip_list_tmp ""
+set harden_ip_tree [regsub -all {;?\s*#[^\n]*} $harden_ip_tree ""]
+
+    Rocket {}
+
+set LIB(HARDEN)  ""
+gen_harden_array "" 0
+gen_all_son      [regexp -inline {\w+} $harden_ip_tree]
+if {[info exist module_${top}(son)]} {
+    if {[info exist flatten] && $flatten == "YES"} {
+        foreach ason [set module_${top}(all_son)] {
+            if {[info exist ${ason}_FLAT] && [set ${ason}_FLAT]=="NO"} {
+                lappend LIB(HARDEN) ${ason}_$corner.db
+            }
+        }
+    } else {
+        foreach ason [set module_${top}(son)] {
+            lappend LIB(HARDEN) ${ason}_$corner.db
+        }
+    }
+} elseif {[regexp "\\n\\s+$top\\s+{(\[\\w\\s\]+)}" $not_harden_ip_tree match sub_macro]} {
+    set module_${top}(father) "father"
+    set module_${top}(son)    ""
+    foreach amacro $sub_macro {
+        if {[info exist LIB_IPIO_MAP($amacro)]} {
+            lappend ip_list_tmp $amacro
+        } else {
+            lappend LIB(HARDEN) ${amacro}_$corner.db
+            lappend module_${top}(son) $amacro
+        }
+    }
+}
+if {$tool == "DC"} {
+    set HARDEN_LIB_PATH "../../../sta/sub_db/syn"
+} elseif {$tool == "FM"} {
+    set HARDEN_LIB_PATH "../../../sta/sub_db/syn"
+} elseif {$tool == "PT"} {
+    if {$phase == "SYN"} {
+        set HARDEN_LIB_PATH "../../../sta/sub_db/syn"
+    } elseif {$phase == "PLACE"} {
+        set HARDEN_LIB_PATH "../../../sta/sub_db/place"
+    } elseif {$phase == "CTS"} {
+        set HARDEN_LIB_PATH "../../../sta/sub_db/cts"
+    } elseif {$phase == "ROUTE"} {
+        set HARDEN_LIB_PATH "../../../sta/sub_db/route"
+    }
+}
+#========================================================
+#   4. IO/IP lib setup
+#========================================================
+set LIB(IPIO)   ""
+if {[info exist flatten] && $flatten == "YES"} {
+    foreach ason [set module_${top}(all_son)] {
+        set ip_list_tmp [concat $ip_list_tmp [set module_${ason}(ip)]]
+    }
+}
+if {[info exist module_${top}(ip)]} {
+    set ip_list_tmp [concat $ip_list_tmp [set module_${top}(ip)]]
+}
+foreach aipio $ip_list_tmp {
+    foreach aline [split [set LIB_IPIO_MAP($aipio)] \n] {
+        if {[regexp "$corner\\s*:\\s*(\\S+.+)" $aline match libs_tmp ]} {
+            foreach alib $libs_tmp {
+                lappend LIB(IPIO) $alib
+            }
+        }
+    }
+}
+#========================================================
+#   5. Search path and link lib setup
+#========================================================
+set search_path         [lsort -u [concat . $STD_LIB_PATH $MEM_LIB_PATH $HARDEN_LIB_PATH $IPIO_LIB_PATH $RTL_SEARCH_PATH]]
+. /local/home/coguest5/vlsi_flow_RTLPT/flow/lib_data/nangate45
+set synthetic_library   "dw_foundation.sldb "
+dw_foundation.sldb 
+set link_library        [concat * $LIB(STD) $LIB(MEM) $LIB(IPIO) $LIB(HARDEN) $synthetic_library]
+* NangateOpenCellLibrary_typical.db dw_foundation.sldb
+* NangateOpenCellLibrary_typical.db dw_foundation.sldb
+* NangateOpenCellLibrary_typical.db dw_foundation.sldb
+set link_library [regsub {\w+.sldb} $link_library ""]
+* NangateOpenCellLibrary_typical.db 
+#========================================================
+#    Reading Netlist  Section                         
+#========================================================
+if {$phase == "SYN"} {
+    if {![info exist netlist_files]} {
+        if {$flatten == "YES"} {
+            foreach ason [set module_${top}(all_son)] {
+                if {![info exist ${ason}_FLAT] || [set ${ason}_FLAT]!="NO"} {
+                    read_verilog [glob $netlist_dir/${ason}.v]
+                }
+            }
+        }
+        read_verilog [glob $netlist_dir/${top_extended}.syn.v.gz]
+        #read_verilog [glob $netlist_dir/${top}.v]
+    } else {
+        foreach afile $netlist_files {
+            regexp {(\w+)\.v} $afile match module_name
+            if {$flatten == "YES" && $module_name != $top} {
+                if {![info exist ${module_name}_FLAT] || [set ${module_name}_FLAT]!="NO"} {
+                    read_verilog [glob $afile]
+                }
+            } elseif {$module_name == $top} {
+                read_verilog [glob $afile]
+            }
+        }
+    }
+} else { 
+    read_verilog [glob $netlist_dir/${top_extended}/${phase}.v]
+}
+1
+current_design $top
+Information: current_design won't return any data before link (DES-071)
+link
+Loading verilog file '/local/home/coguest5/vlsi_flow_RTLPT/flow/pd_data/pnr/netlist/Rocket_TinyRocket/init.v'
+Loading db file '/local/home/coguest5/vlsi_flow_RTLPT/flow/lib_data/nangate45/NangateOpenCellLibrary_typical.db'
+Linking design Rocket...
+Information: Removing 28 unneeded designs..... (LNK-034)
+Information: 77 (57.46%) library cells are unused in library NangateOpenCellLibrary..... (LNK-045)
+Information: total 77 library cells are unused (LNK-046)
+Design 'Rocket' was successfully linked.
+Information: There are 17889 leaf cells, ports, hiers and 20904 nets in the design (LNK-047)
+1
+set_operating_conditions -analysis_type on_chip_variation 
+1
+#========================================================
+#    Reading Spef Section   
+#========================================================
+source -c -v -e ../../scr/flow_com/transform_spef_type.tcl
+#========================================================================
+#   
+#   TCL Script
+#   
+#========================================================================
+set pvt_rc_comb_table [regsub -all {;?\s*#[^\n]*} $pvt_rc_comb_table ""]
+
+        MAX  :  cmax
+        MIN  :  cmin
+    
+foreach aline [split $pvt_rc_comb_table \n] {
+    set aline [regsub {^ *} $aline ""]
+    if {[regexp "$corner\\s*:\\s*(\\w.*)" $aline match rc_list]} {
+        if {$rc_para == ""} {
+            set rc_para [lindex $rc_list 0]
+        }
+    }
+}
+if {[regexp {WCZ|MZ} $corner match]} {
+    set spef_type ${rc_para}.0c
+} elseif {[regexp {MAX|ML} $corner match]} {
+    set spef_type ${rc_para}.125c
+} elseif {[regexp {WCL|MIN} $corner match]} {
+    set spef_type ${rc_para}.-40c
+} elseif {[regexp {TYP} $corner match]} {
+    set spef_type ${rc_para}.85c
+}
+.85c
+.85c
+.85c
+if {$phase == "SYN"} {
+    set auto_wire_load_selection false
+    set_wire_load_mode top
+} else {
+    set_noise_parameter -include_beyond_rails -enable_propagation -analysis_mode report_at_endpoint
+    if {$flatten == "YES"} {
+        foreach ason [set module_${top}(all_son)] {
+            if {![info exist ${ason}_FLAT] || [set ${ason}_FLAT]!="NO"} {
+                foreach ainst [get_object [get_cells -h -f "ref_name == $ason"]] {
+                    read_parasitics -keep_capacitive_coupling -path $ainst -format spef $spef_dir/${ason}.${spef_type}.spef.gz
+                }
+            }
+        }
+    }
+    # read_parasitics -keep_capacitive_coupling -format spef $spef_dir/${top}.${spef_type}.spef.gz
+    read_parasitics -keep_capacitive_coupling -format spef $spef_dir/${top_extended}/${top_extended}_[string tolower ${phase}]_RC.spef
+    #complete_net_parasitics -complete_with zero    
+    report_annotated_parasitics -check -max_nets 1000 -list_not_annotated -pin_to_pin_nets >> $pt_rpt_dir/${top}.annotated.rpt
+}
+ Analysis Mode        : report_at_endpoint
+ Ignore Arrival       : false
+ Include Beyond Rails : true
+ Enable Propagation   : true
+ Analysis Type        : violators
+skip_loc_attr_handle: (nil)
+Information: Log for 'read_parasitics command' will be generated in '../../rpt/Rocket_TinyRocket_init_TYP_SAIF_SDF/Rocket.annotated.rpt'. (PARA-107)
+#========================================================
+#    Timing Constraints Section     
+#========================================================
+#-----------------------
+#define original clock
+#-----------------------
+set clock_list [regsub -all {;?\s*#[^\n]*} $clock_list ""]
+
+     clock                             MAX:2000 TYP:2000 MIN:2000
+
+foreach aline [split $clock_list \n] {
+    set clk_name [regexp -inline {\S+} $aline]
+    if {[info exist corner_freq_map_tmp]} {unset corner_freq_map_tmp}
+    foreach acorner_freq [regexp -inline -all {\w+\s*:\s*\w+} $aline] {
+        if {[regexp "(\\w+)\\s*:\\s*(\\w+)" $acorner_freq match acorner afreq]} {
+            set corner_freq_map_tmp($acorner) $afreq
+        }
+    }
+    if {![info exist corner_freq_map_tmp]} {
+        continue
+    } elseif {[info exist corner_freq_map_tmp($corner)]} {
+        set afreq [set corner_freq_map_tmp($corner)]
+    } else {
+        set afreq [set corner_freq_map_tmp(WCZ[regexp -inline {_\w+} $corner])]
+    }
+    if {[get_ports -q $clk_name] != ""} {
+        create_clock -name CLK_$clk_name -period [expr 1000.0/$afreq] [get_ports $clk_name]
+        if {$auto_io_const == "YES" && [set module_${top}(father)] != ""} {
+            create_clock -name VCLK_$clk_name -period [expr 1000.0/$afreq]
+        }
+    } else {
+        regexp {\w+/\w+(\[\d+\])?$} $clk_name clk_name_tmp match1
+        set clk_name_tmp [regsub -all {/|\[}  $clk_name_tmp "_"]
+        set clk_name_tmp [regsub      {\]}    $clk_name_tmp ""]
+        create_clock -name CLK_$clk_name_tmp -period [expr 1000.0/$afreq] [get_pins $clk_name]
+    }
+}
+#-----------------------
+#define generated clock
+#-----------------------
+eval $generated_clock_txt
+#-----------------------
+#define clock groups 
+#-----------------------
+eval $clk_group_txt
+#-----------------------
+#define io constrains
+#-----------------------
+if {$auto_io_const == "YES" && [set module_${top}(father)] != ""} {
+    foreach aclk [get_object [get_clocks -f "is_generated==false&&defined(sources)"]] {
+        set clk_period_tmp      [get_att [get_clocks $aclk] period]
+        set input_dly_tmp       [expr 0.6 * $clk_period_tmp]
+        set output_dly_tmp      [expr 0.6 * $clk_period_tmp]
+        set_input_delay        $input_dly_tmp    -max -clock V$aclk -add [get_ports * -f "direction==in&&!defined(clocks)"]
+        set_input_delay  [expr $input_dly_tmp/2] -min -clock V$aclk -add [get_ports * -f "direction==in&&!defined(clocks)"]
+        set_output_delay       $input_dly_tmp    -max -clock V$aclk -add [get_ports * -f "direction==out"]
+        set_output_delay [expr $input_dly_tmp/2] -min -clock V$aclk -add [get_ports * -f "direction==out"]
+        set_multicycle_path 4 -setup -end -from [all_inputs] -to [all_outputs]
+        set_multicycle_path 3 -hold  -end -from [all_inputs] -to [all_outputs]
+    }
+}
+eval $io_constraint_txt
+#-----------------------
+#define timing exception
+#-----------------------
+eval $timing_exception_txt
+#-----------------------
+#define clock latency
+#-----------------------
+#-----------------------
+#define input_transition
+#-----------------------
+#-----------------------
+#define load
+#-----------------------
+if {[set module_${top}(father)] == ""} {
+    if {[regexp {WCZ|WCL|MAX} $corner match]} {
+        set_load 8 [all_outputs]
+    } elseif {[regexp {ML|MZ|MIN} $corner match]} {
+        set_load 6 [all_outputs]
+    } else {
+        set_load 7 [all_outputs]
+    }
+} else {
+    set_load -max 0.2 [all_outputs]
+    set_load -min 0.1 [all_outputs]
+}
+1
+#-----------------------
+#define ocv/unc/max_trans/max_cap
+#-----------------------
+source ../../scr/flow_com/transform_signoff_table.tcl
+#------------------
+#define ocv
+#------------------
+
+set_timing_derate  -late  1.0
+set_timing_derate  -early  1.0 
+
+
+#------------------
+#define clock uncertainty
+#------------------
+
+set_clock_uncertainty 0.15 -setup CLK_clock
+set_clock_uncertainty 0.15 -hold CLK_clock 
+
+
+#------------------
+#define max_trans
+#------------------
+
+set_max_transition 0.04 -clock CLK_clock
+set_max_transition 0.15 -data CLK_clock 
+
+
+1
+1
+set_max_fanout 32 [current_design]
+1
+if {[info exist ajust_signoff_txt]} {eval $ajust_signoff_txt}
+#-----------------------
+#Expand clock tree
+#-----------------------
+if {[regexp {CTS|ROUTE} $phase match]} {
+    set_propagated_clock [all_clocks]
+} 
+# if {[regexp {ROUTE} $phase match]} {
+#     set_propagated_clock [all_clocks]
+# } 
+#========================================================
+#    Power Switching Activity Annotation Section 
+#========================================================
+if {[regexp {VCD|SAIF} $power_analysis] } {
+    set power_enable_analysis true
+    set power_enable_multi_rail_analysis true
+    set power_table_include_switching_power    false
+    if {[regexp {VCD} $power_analysis]} {
+        set power_analysis_mode time_based
+        set_power_analysis_options -waveform_interval $waveform_interval
+        if {[file exists $vcdfile]} {
+            read_vcd $vcdfile -strip_path $fsdb_strip_path -path $net_hier -time $time_window
+        } else {
+            puts "ERROR: can not find the vcdfile $vcdfile"
+        }
+    } else {
+        set power_analysis_mode averaged
+        set_switching_activity -static_probability 0.5  -toggle_rate 0.4 -type registers          -clock_domains * -hierarchy -verbose 
+        set_switching_activity -static_probability 0.05 -toggle_rate 0.4 -type clock_gating_cells -clock_domains * -hierarchy -verbose 
+        set_switching_activity -static_probability 0.5  -toggle_rate 0.4 -type black_boxes        -clock_domains * -hierarchy -verbose 
+        set_switching_activity -static_probability 0.5  -toggle_rate 0.4 -type memory             -clock_domains * -hierarchy -verbose 
+        set CLK_PORTS  [filter_collection [all_inputs] "is_clock_used_as_clock == true" ] 
+        set CASE_PORTS [filter_collection [all_inputs] "case_value == 0 || case_value == 1 "] 
+        set DATA_PORTS [remove_from_collection [remove_from_collection [all_inputs]  $CLK_PORTS] $CASE_PORTS ] 
+        set_switching_activity -static_probability 0.5  -toggle_rate 0.4                          -clock_domains *            -verbose $DATA_PORTS 
+        set ASYN_PINS [get_pins -filter "is_async_pin == true" -of_objects [get_cells -h * -filter "is_black_box == false && is_memory_cell == false && is_sequential == true"]] 
+        reset_switching_activity -static_probability -toggle_rate $ASYN_PINS 
+        set_switching_activity -static_probability 1    -toggle_rate 0                            -clock_domains * -hierarchy -verbose $ASYN_PINS 
+        #infer_switching_activity -apply         
+        if {![regexp {CTS|ROUTE} $phase]} {
+            estimate_clock_network_power [get_lib_cells */$ck_buffer] -max_fanout 16
+        }
+        # if {![regexp {ROUTE} $phase]} {
+        #     estimate_clock_network_power [get_lib_cells */$ck_buffer] -max_fanout 16
+        # }
+    }
+    report_switching_activity -list_not_annotated > $pt_rpt_dir/${top}.switching_activity.rpt
+}
+Information: Checked out license 'PrimePower' (PT-019)
+Information: Advanced waveform propagation is enabled. (PT-040)
+Information: Setting rc_cache_min_max_rise_fall_ceff to TRUE. (XTALK-015)
+Warning: Some timing arcs have been disabled for breaking timing loops or because of constant propagation. Use the 'report_disable_timing' command to get the list of these disabled timing arcs. (PTE-003)
+Information: Building multi voltage information for entire design. (MV-022)
+Information: Signal integrity analysis is enabled but the design has no signal integrity data. (XTALK-011)
+Information: Starting crosstalk aware timing iteration 1. (XTALK-001)
+Information: Number of nets evaluated in the previous iteration: 18667. (XTALK-105)
+Information : Caching clock nets for SSA -clock_domain
+Warning: No object is selected to set the specified switching activity.  (PSW-173)
+Warning: No object is selected to set the specified switching activity.  (PSW-173)
+Warning: constant pin "RN" activity is overriden by set_switching_activity.  (PSW-215)
+Warning: constant pin "SN" activity is overriden by set_switching_activity.  (PSW-215)
+Warning: constant pin "RN" activity is overriden by set_switching_activity.  (PSW-215)
+Warning: constant pin "SN" activity is overriden by set_switching_activity.  (PSW-215)
+Warning: constant pin "RN" activity is overriden by set_switching_activity.  (PSW-215)
+Warning: constant pin "SN" activity is overriden by set_switching_activity.  (PSW-215)
+Warning: constant pin "RN" activity is overriden by set_switching_activity.  (PSW-215)
+Warning: constant pin "SN" activity is overriden by set_switching_activity.  (PSW-215)
+Warning: constant pin "RN" activity is overriden by set_switching_activity.  (PSW-215)
+Warning: constant pin "SN" activity is overriden by set_switching_activity.  (PSW-215)
+Error: can't read "ck_buffer": no such variable
+	Use error_info for more info. (CMD-013)
+#========================================================
+#    Save_Session Section 
+#========================================================
+update_timing
+1
+save_session $pt_ses_dir/${log_name}
+Information: Cleaning and overwriting all data in the existing directory '/local/home/coguest5/vlsi_flow_RTLPT/flow/bes_data/sta/session/Rocket_TinyRocket_init_TYP_SAIF_SDF'. (SR-002)
+Saving netlist information.....
+Saving miscellaneous application information.....
+Saving power information.....
+Saving timing information.....
+Saving variable information.....
+Information: At least 2 MB of free disk space in pt_tmp_dir will be required to restore this session.  (SR-044)
+1
+#========================================================
+#    Power Analysis Section 
+#========================================================
+if {[regexp {VCD|SAIF} $power_analysis]} {
+    # check_power -verbose -significant_digits 3 > $pt_rpt_dir/${top}.check_power.rpt
+    report_power > $pt_rpt_dir/${top}.report_power.rpt
+    # report_power -verbose -hierarchy -levels 5 >> $pt_rpt_dir/${top}.report_power.rpt
+    #report_clock_gate_savings -sequential -hierarchical > $pt_rpt_dir/${top}.report_clock_gate_savings.rpt
+    #report_clock_gate_savings -by_clock_gate -hierarchical > $pt_rpt_dir/${top}.report_clock_gate_savings.rpt
+}
+#========================================================
+#    report_timing Section    
+#========================================================
+#-----------------------
+# group path
+#-----------------------
+foreach_in ac [get_clocks -f "defined(sources)"] {
+    set clk_name [get_obj $ac]
+    group_path -name ${clk_name}_in2reg  -from [all_inputs]  -to   $ac
+    group_path -name ${clk_name}_reg2out -to   [all_outputs] -from $ac
+}
+group_path -name all_in2out -from [all_inputs] -to [all_outputs]
+1
+#-----------------------
+# check timing
+#-----------------------
+# check_timing -verbose -significant_digits 3 -include {clock_crossing data_check_multiple_clock data_check_no_clock generated_clocks generic ideal_clocks latch_fanout latency_override loops ms_separation no_clock no_driving_cell no_input_delay partial_input_delay pll_configuration retain signal_level supply_net_voltage unconstrained_endpoints unexpandable_clocks pulse_clock_non_pulse_clock_merge pulse_clock_no_pulse_generator} > $pt_rpt_dir/${top}.check_timing.rpt
+#-----------------------
+# report coverage/timing_summary/clock/qor/exception
+#-----------------------
+# set_max_delay 5 -to [all_outputs]
+# report_timing -from [all_registers] -to [all_outputs]    > $pt_rpt_dir/${top}.report_reg2output.txt
+# set_output_delay 5
+# report_analysis_coverage -status_details {untested} \
+#     -check_type {setup hold recovery removal min_period clock_gating_setup clock_gating_hold max_skew out_setup out_hold} \
+#     -exclude_untested {constant_disabled false_paths} -significant_digits 3 \
+#     > $pt_rpt_dir/${top}.report_analysis_coverage.rpt
+# report_clock_timing -type summary -significant_digits 3 > $pt_rpt_dir/${top}.clock_timing.rpt
+# report_design > $pt_rpt_dir/${top}.report_design.rpt
+# report_clock -attributes -skew -groups > $pt_rpt_dir/${top}.clocks.rpt 
+# report_qor > $pt_rpt_dir/${top}.qor.rpt
+# report_exceptions -ignored  > $pt_rpt_dir/${top}.exceptions.rpt
+# report_timing  -trans -nets -cap -nosplit -max_paths 1000 > $pt_rpt_dir/${top}.timing_gba.rpt
+# report_timing  -max_paths 1000 -nworst 1 -pba_mode path -trans -nets -cap -nosplit > $pt_rpt_dir/${top}.timing_pba_path.rpt
+# report_timing -nworst 10 -pba_mode exhaustive -trans -nets -cap -nosplit > $pt_rpt_dir/${top}.timing_pba_exhaustive.rpt
+# report_timing  -trans -nets -cap -nosplit -slack_lesser_than 10 -max_paths 100000000 > $pt_rpt_dir/${top}.timing_gba.rpt
+report_qor > $pt_rpt_dir/${top}.qor.rpt
+report_power -nosplit -hierarchy -levels 1 > $pt_rpt_dir/${top}.report_power_hier.rpt
+report_power -cell_power -area -nosplit > $pt_rpt_dir/${top}.cell_pwr_area.rpt
+report_power -net_power -nosplit > $pt_rpt_dir/${top}.net_pwr.rpt
+if {![file exists $pt_rpt_dir/module/]} {
+        file mkdir $pt_rpt_dir/module/
+} else {
+    foreach afile [glob -nocomplain $pt_rpt_dir/module/*] {
+        file delete $afile
+    }
+}
+report_power > $pt_rpt_dir/module/${top}.total_pwr.rpt
+foreach module_name [get_object [get_cells * -filter {is_hierarchical == true}]] {
+    puts $module_name
+    current_instance $module_name
+    set cells [get_object [get_cells -hierarchical -filter {is_hierarchical == false} *]]
+    set num_cells [llength $cells]
+    # Print the result
+    puts "Number of cells in $module_name: $num_cells"
+    report_power > $pt_rpt_dir/module/${module_name}.total_pwr.rpt
+    current_instance ..
+}
+POWERGATING_clock_n12112_0
+Number of cells in POWERGATING_clock_n12112_0: 1
+Information: Current instance is the top-level of design 'Rocket'. (DES-070)
+POWERGATING_clock_mem_pc_valid_0
+Number of cells in POWERGATING_clock_mem_pc_valid_0: 1
+Information: Current instance is the top-level of design 'Rocket'. (DES-070)
+alu
+Number of cells in alu: 1071
+Information: Current instance is the top-level of design 'Rocket'. (DES-070)
+ibuf
+Number of cells in ibuf: 814
+Information: Current instance is the top-level of design 'Rocket'. (DES-070)
+bpu
+Number of cells in bpu: 341
+Information: Current instance is the top-level of design 'Rocket'. (DES-070)
+csr
+Number of cells in csr: 3924
+Information: Current instance is the top-level of design 'Rocket'. (DES-070)
+div
+Number of cells in div: 2146
+Information: Current instance is the top-level of design 'Rocket'. (DES-070)
+# report_net -nosplit > $pt_rpt_dir/${top}.net_delay.rpt
+# write_verilog -output $pt_rpt_dir/${top}.${phase}.v
+## get cell delay
+# get_attribute -of_objects [get_cells -h -filter "is_black_box == false && is_memory_cell == false && is_sequential == true"] -name cell_delay > $pt_rpt_dir/${top}.cell_delay.rpt
+# get_attribute -of_objects [get_cells -h -filter "is_black_box == false && is_memory_cell == false && is_sequential == true"] -name is_async_pin > $pt_rpt_dir/${top}.async_pin.rpt
+#-----------------------
+# report setup/hold
+#-----------------------
+# report_constraint  -all_violators -path_type  slack_only -max_delay -recovery  -clock_gating_setup -nosplit  >  $pt_rpt_dir/${top}.setup_violation.rpt
+# report_constraint  -all_violators -path_type  slack_only -min_delay -removal   -clock_gating_hold  -nosplit  >  $pt_rpt_dir/${top}.hold_violation.rpt
+if {($phase == "CTS"|| $phase == "ROUTE") && $flatten == "YES" && [set module_${top}(father)] == ""} {
+    report_constraint -pba exhaustive -all_violators -path_type slack_only -max_delay -recovery  -clock_gating_setup -nosplit  >  $pt_rpt_dir/${top}.setup_violation.pba.rpt
+#    report_constraint -pba exhaustive -all_violators -path_type slack_only -min_delay -removal   -clock_gating_hold  -nosplit  >  $pt_rpt_dir/${top}.hold_violation.pba.rpt
+
+    report_timing -sort group -delay max -nworst 2 -max_paths 5000 -path_type full_clock_expanded -input -nets -sign 3 -trans -cap -derate -nosplit -cross \
+        > $pt_rpt_dir/${top}.setup_violation.verbose.rpt
+    exec gzip -f $pt_rpt_dir/${top}.setup_violation.verbose.rpt
+
+    report_timing -sort group -delay min -nworst 2 -max_paths 5000 -path_type full_clock_expanded -input -nets -sign 3 -trans -cap -derate -nosplit -cross \
+        > $pt_rpt_dir/${top}.hold_violation.verbose.rpt
+    exec gzip -f $pt_rpt_dir/${top}.hold_violation.verbose.rpt
+}
+#-----------------------
+# report drc
+#-----------------------
+if {$phase == "CTS"|| $phase == "ROUTE"} {
+    #report_constraint -nosplit -all_violators -path_type end -max_capacitance -min_capacitance -max_transition \
+    #    -min_transition -max_fanout -min_fanout -min_pulse_width -min_period -pulse_clock_min_width -pulse_clock_max_width \
+    #    -pulse_clock_min_transition -pulse_clock_max_transition  -max_skew  -significant_digits 3 \
+    #    > $pt_rpt_dir/${top}.report_drc.rpt
+    #report_constraint -nosplit -all_violators -path_type end -max_capacitance -min_capacitance -significant_digits 3 \
+        > $pt_rpt_dir/${top}.capacitance_violation.rpt
+    report_constraint -nosplit -all_violators -path_type end -max_capacitance  -significant_digits 3 \
+        > $pt_rpt_dir/${top}.capacitance_violation.rpt
+
+    report_constraint -nosplit -all_violators -path_type end -max_transition  -min_transition  -significant_digits 3 \
+        > $pt_rpt_dir/${top}.transition_violation.rpt
+    report_constraint -nosplit -all_violators -path_type end -min_pulse_width -min_period      -significant_digits 3 \
+        > $pt_rpt_dir/${top}.min_pulse_violation.rpt
+    
+}
+#-----------------------
+# SI report 
+#-----------------------
+#if {$phase != "CTS"} {
+#    check_noise -verbose -include {noise_driver noise_immunity} > $pt_rpt_dir/${top}.check_noise.rpt
+#    report_noise -significant_digits 3 -verbose -all_violators -slack_type area_percent > $pt_rpt_dir/${top}.report_noise_area_percent.rpt
+#    report_noise -significant_digits 3 -verbose -all_violators -slack_type height > $pt_rpt_dir/${top}.report_noise_height.rpt
+#    report_si_double_switching -nosplit > $pt_rpt_dir/${top}.report_si_double_switching.rpt
+#    report_si_bottleneck -max -cost_type delta_delay -slack_lesser_than 0 -max_nets 3000 -include_clock_nets -nosplit > $pt_rpt_dir/${top}.report_si_bottleneck_max.rpt
+#    report_si_bottleneck -min -cost_type delta_delay -slack_lesser_than 0 -max_nets 3000 -include_clock_nets -nosplit > $pt_rpt_dir/${top}.report_si_bottleneck_min.rpt
+#}
+#xtop
+#if {$flatten == "YES"} {
+#source -e -c -v ../../../xtop/scr/dump_timing_file.tcl
+#}
+#-----------------------
+# data statistics 
+#-----------------------
+source ../../scr/flow_com/proc_qor.tcl 
+	proc_qor
+	proc_compare_qor
+	proc_histogram
+# proc_qor > $pt_rpt_dir/${top}.qor_summary.rpt
+#========================================================
+#    output etm ,sdf and sdc
+#========================================================
+if {[regexp {YES} $sdc_out]} {
+    write_sdc -nosplit $pt_sdc_dir/${top}_${phase}_${corner}.sdc
+}
+if {[regexp {YES} $gen_sdf]} {
+    reset_timing_derate
+    write_sdf -version 3.0 \
+              -input_port_nets \
+              -output_port_nets \
+              -significant_digits 4 \
+              -context Verilog \
+              -compress gzip \
+              -include {SETUPHOLD RECREM} \
+              -exclude {checkpins no_condelse} \
+              -no_edge  \
+              -no_edge_merging timing_checks \
+              -no_internal_pins \
+              $pt_sdf_dir/${top}_${phase}_${corner}.sdf.gz
+
+    if {$flatten == "YES"} {
+        foreach ason [set module_${top}(all_son)] {
+            if {![info exist ${ason}_FLAT] || [set ${ason}_FLAT]!="NO"} {
+                exec cp -L [glob $netlist_dir/${ason}.v]          $pt_sdf_dir/
+                exec cp -L $spef_dir/${ason}.${spef_type}.spef.gz $pt_sdf_dir/
+            }
+        }
+    }
+    # exec cp -L [glob $netlist_dir/${top}.v]           $pt_sdf_dir/${top}.v
+    # exec cp -L $spef_dir/${top}.${spef_type}.spef.gz  $pt_sdf_dir/${top}.${spef_type}.spef.gz
+    # exit
+}
+Warning: Primetime may not be able to fully annotate SDF generated with the -no_internal_pins option (SDF-029)
+Information: Advanced waveform propagation is enabled. (PT-040)
+Information: Starting incremental signal integrity update. (XTALK-016)
+Information: Setting timing_update_effort to low. (XTALK-017)
+Information: Starting crosstalk aware timing iteration 1. (XTALK-001)
+Information: Number of nets evaluated in the previous iteration: 0. (XTALK-105)
+****************************************
+Report : write_sdf ../../sdf/Rocket_TinyRocket_init_TYP_SAIF_SDF_May_8_18/Rocket_init_TYP.sdf.gz
+	-input_port_nets
+	-output_port_nets
+	-no_internal_pins
+	-no_edge
+	-compress gzip*
+	-exclude { checkpins }
+	-include { SETUPHOLD RECREM }
+	-no_edge_merging { timing_checks }
+Design : Rocket
+Version: T-2022.03-SP3
+Date   : Thu May  8 18:23:11 2025
+****************************************
+
+if {[regexp {YES} $extract_db]} {
+    set extract_model_write_case_values_to_constraint_file true
+    write_interface_timing -significant_digits 3 -verbose $pt_rpt_dir/${top}.interface_timing_netlist.rpt
+    if {$phase == "CTS" || $phase == "ROUTE"} {
+        set extract_model_with_clock_latency_arcs true
+    } else {
+        set extract_model_with_clock_latency_arcs false
+    } 
+
+    set extract_model_capacitance_limit 1
+    set extract_model_clock_transition_limit 1
+    set extract_model_data_transition_limit 1
+    set extract_model_num_capacitance_points 7
+    set extract_model_num_clock_transition_points 7
+    set extract_model_num_data_transition_points 7
+    extract_model -library_cell -output $HARDEN_LIB_PATH/${top}_${corner} -format {lib db}
+    exec mv -f $HARDEN_LIB_PATH/${top}_${corner}_lib.db $HARDEN_LIB_PATH/${top}_${corner}.db
+    write_interface_timing -significant_digits 3 -verbose $pt_rpt_dir/${top}.interface_timing_etm.rpt
+    compare_interface_timing $pt_rpt_dir/${top}.interface_timing_netlist.rpt $pt_rpt_dir/${top}.interface_timing_etm.rpt \
+        -output $pt_rpt_dir/${top}.interface_timing_compare.rpt -sort_by_worst -significant_digits 3
+}
+print_message_info
+
+Id             Severity         Limit    Occurrences   Suppressed
+--------------------------------------------------------------------
+CMD-013           Error         10000 -            2            0
+PARA-001          Error           100 *            1            0
+PSW-215         Warning         10000 -           10            0
+PSW-173         Warning         10000 -            2            0
+PTE-003         Warning         10000 -            1            0
+PTE-067         Warning         10000 -            1            1
+SDF-029         Warning         10000 -            1            0
+PARA-007        Warning           100              0            0
+CMD-041     Information         10000 -           12            0
+DES-070     Information         10000 -            7            0
+PT-040      Information         10000 -            3            0
+XTALK-001   Information         10000 -            3            0
+XTALK-105   Information         10000 -            3            0
+PARA-107    Information         10000 -            2            0
+PT-019      Information         10000 -            2            0
+PWR-601     Information         10000 -            2            0
+PWR-602     Information         10000 -            2            0
+XTALK-016   Information         10000 -            2            0
+XTALK-017   Information         10000 -            2            0
+CMCR-103    Information         10000 -            1            0
+DES-071     Information         10000 -            1            0
+LNK-034     Information         10000 -            1            0
+LNK-045     Information         10000 -            1            0
+LNK-046     Information         10000 -            1            0
+LNK-047     Information         10000 -            1            0
+MV-022      Information         10000 -            1            0
+SR-002      Information         10000 -            1            0
+SR-044      Information         10000 -            1            0
+XTALK-011   Information         10000 -            1            0
+XTALK-015   Information         10000 -            1            0
+
+Diagnostics summary: 2 errors, 14 warnings, 51 informationals
+file copy $pt_log_dir/${log_name}.log $pt_rpt_dir/${top}.log

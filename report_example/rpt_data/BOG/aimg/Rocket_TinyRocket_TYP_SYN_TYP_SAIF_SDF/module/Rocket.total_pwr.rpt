@@ -1,0 +1,32 @@
+****************************************
+Report : Averaged Power
+Design : Rocket
+Version: T-2022.03-SP3
+Date   : Tue May 20 11:35:12 2025
+****************************************
+
+
+
+  Attributes
+  ----------
+      i  -  Including register clock pin internal power
+      u  -  User defined power group
+
+                        Internal  Switching  Leakage    Total
+Power Group             Power     Power      Power      Power   (     %)  Attrs
+--------------------------------------------------------------------------------
+clock_network              0.0257    0.0000    0.0000    0.0257 (56.29%)  i
+register                4.257e-04 1.736e-04 1.892e-04 7.886e-04 ( 1.73%)  
+combinational              0.0128 5.564e-03 7.675e-04    0.0192 (41.99%)  
+sequential                 0.0000    0.0000    0.0000    0.0000 ( 0.00%)  
+memory                     0.0000    0.0000    0.0000    0.0000 ( 0.00%)  
+io_pad                     0.0000    0.0000    0.0000    0.0000 ( 0.00%)  
+black_box                  0.0000    0.0000    0.0000    0.0000 ( 0.00%)  
+
+  Net Switching Power  = 5.737e-03   (12.57%)
+  Cell Internal Power  =    0.0389   (85.33%)
+  Cell Leakage Power   = 9.567e-04   ( 2.10%)
+                         ---------
+Total Power            =    0.0456  (100.00%)
+
+1

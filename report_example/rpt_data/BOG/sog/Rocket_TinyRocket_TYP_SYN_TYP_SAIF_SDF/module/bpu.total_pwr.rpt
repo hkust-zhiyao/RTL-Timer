@@ -1,0 +1,32 @@
+****************************************
+Report : Averaged Power
+Design : Rocket/bpu (BreakpointUnit)
+Version: T-2022.03-SP3
+Date   : Tue May 20 20:06:54 2025
+****************************************
+
+
+
+  Attributes
+  ----------
+      i  -  Including register clock pin internal power
+      u  -  User defined power group
+
+                        Internal  Switching  Leakage    Total
+Power Group             Power     Power      Power      Power   (     %)  Attrs
+--------------------------------------------------------------------------------
+clock_network              0.0000    0.0000    0.0000    0.0000 ( 0.00%)  i
+register                   0.0000    0.0000    0.0000    0.0000 ( 0.00%)  
+combinational           8.330e-05 3.192e-05 1.147e-05 1.267e-04 (100.00%) 
+sequential                 0.0000    0.0000    0.0000    0.0000 ( 0.00%)  
+memory                     0.0000    0.0000    0.0000    0.0000 ( 0.00%)  
+io_pad                     0.0000    0.0000    0.0000    0.0000 ( 0.00%)  
+black_box                  0.0000    0.0000    0.0000    0.0000 ( 0.00%)  
+
+  Net Switching Power  = 3.192e-05   (25.19%)
+  Cell Internal Power  = 8.330e-05   (65.75%)
+  Cell Leakage Power   = 1.147e-05   ( 9.05%)
+                         ---------
+Total Power            = 1.267e-04  (100.00%)
+
+1

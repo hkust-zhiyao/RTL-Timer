@@ -1,0 +1,28 @@
+****************************************
+Report : Averaged Power
+	-cell_power
+	-sort_by cell_internal_power
+	-nosplit
+	-area
+Design : Rocket/POWERGATING_clock_n12112_0 (POWERMODULE_HIGH_Rocket_0_5)
+Version: T-2022.03-SP3
+Date   : Thu May 29 16:13:26 2025
+****************************************
+
+
+
+  Attributes
+  ----------
+      a  -  Annotated internal | leakage | switching power 
+      b  -  Black-box (unresolved) cell
+      c  -  Clock pin internal power only
+      d  -  Does not include clock pin internal power
+      h  -  Hierarchical cell
+
+                        Lib Cell                      Internal  Switching Leakage   Total
+Cell                    Name                          Power     Power     Power     Power    (     %)      Area   Attrs
+------------------------------------------------------------------------------------------------------------------------
+latch                   CLKGATETST_X8                 5.453e-05 6.606e-05 2.035e-07 1.208e-04 (100.00%)    7.7140 
+------------------------------------------------------------------------------------------------------------------------
+Totals (1 cell)                                       5.453e-05 6.606e-05 2.035e-07 1.208e-04 (100.0%)     7.7140
+1

@@ -1,0 +1,55 @@
+****************************************
+Report : qor
+Design : Rocket
+Version: T-2022.03-SP3
+Date   : Tue May 20 11:35:09 2025
+****************************************
+
+  Timing Path Group 'CLK_clock' (max_delay/setup)
+  ---------------------------------------------
+  Levels of Logic:                           54
+  Critical Path Length:                  11.650
+  Critical Path Slack:                  -11.331
+  Total Negative Slack:               -5625.486
+  No. of Violating Paths:                  2429
+  ---------------------------------------------
+
+  Timing Path Group 'CLK_clock' (min_delay/hold)
+  ---------------------------------------------
+  Levels of Logic:                            2
+  Critical Path Length:                   0.135
+  Critical Path Slack:                   -0.027
+  Total Negative Slack:                 -20.018
+  No. of Violating Paths:                  1539
+  ---------------------------------------------
+
+  Area
+  ---------------------------------------------
+  Net Interconnect area:                  0.000
+  Total cell area:                    45699.543
+  Design Area:                        45699.543
+  ---------------------------------------------
+
+
+  Cell & Pin Count
+  ---------------------------------------------
+  Pin Count:                             110543
+  Hierarchical Cell Count:                    6
+  Hierarchical Port Count:                 1772
+  Leaf Cell Count:                        39848
+  ---------------------------------------------
+
+
+  Design Rule Violations
+  ---------------------------------------------
+  Total No. of Pins in Design:           110543
+  max_capacitance Count:                    118
+  max_fanout Count:                          82
+  max_transition Count:                    7057
+  max_capacitance Cost:                8977.815
+  max_fanout Cost:                     3627.000
+  max_transition Cost:                 4726.711
+  Total DRC Cost:                     17331.527
+  ---------------------------------------------
+
+1

@@ -1,0 +1,32 @@
+****************************************
+Report : Averaged Power
+Design : Rocket/POWERGATING_clock_n12112_0 (POWERMODULE_HIGH_Rocket_0_5)
+Version: T-2022.03-SP3
+Date   : Thu May 29 16:13:26 2025
+****************************************
+
+
+
+  Attributes
+  ----------
+      i  -  Including register clock pin internal power
+      u  -  User defined power group
+
+                        Internal  Switching  Leakage    Total
+Power Group             Power     Power      Power      Power   (     %)  Attrs
+--------------------------------------------------------------------------------
+clock_network           5.453e-05 6.606e-05 2.035e-07 1.208e-04 (100.00%) i
+register                   0.0000    0.0000    0.0000    0.0000 ( 0.00%)  
+combinational              0.0000    0.0000    0.0000    0.0000 ( 0.00%)  
+sequential                 0.0000    0.0000    0.0000    0.0000 ( 0.00%)  
+memory                     0.0000    0.0000    0.0000    0.0000 ( 0.00%)  
+io_pad                     0.0000    0.0000    0.0000    0.0000 ( 0.00%)  
+black_box                  0.0000    0.0000    0.0000    0.0000 ( 0.00%)  
+
+  Net Switching Power  = 6.606e-05   (54.69%)
+  Cell Internal Power  = 5.453e-05   (45.14%)
+  Cell Leakage Power   = 2.035e-07   ( 0.17%)
+                         ---------
+Total Power            = 1.208e-04  (100.00%)
+
+1

@@ -1,2 +1,4 @@
-/dataset/*
-/LS-benchmark/*
+*.tar.gz
+*/fig/*
+*.png
+RTL_pwr_model/saved_pwr/*
