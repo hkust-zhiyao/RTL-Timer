@@ -1,5 +1,0 @@
-{{ name }}{{ array }}
-({% for port in portlist %}
-{{ port }}{%- if loop.index < len_portlist -%}, {%- endif -%}
-{% endfor %}
-)

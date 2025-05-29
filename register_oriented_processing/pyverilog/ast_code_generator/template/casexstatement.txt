@@ -1,5 +1,0 @@
-casex({{ comp }})
-{%- for case in caselist %}
-{{ case }}
-{%- endfor %}
-endcase
